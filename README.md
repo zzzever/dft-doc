@@ -10,7 +10,9 @@ Make material simulation easy.
 
 Live demo on Github Pages: [https://zzzever.github.io](https://zzzever.github.io)
 
-[![PWmat](https://img.shields.io/badge/featured%20on-JekyllThemes-red.svg)](https://www.pwmat.com/)
+[![Static Badge](https://img.shields.io/badge/PWmat-doc-blue)](http://www.pwmat.com)
+
+
 
 ## Why Jekyll with GitBook
 
