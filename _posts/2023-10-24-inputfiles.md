@@ -84,6 +84,7 @@ Controls what PWmat will do. **JOB** can be **SCF**, **NONSCF**, **DOS**, **MOME
 
 #### JOB = SCF
 Do self-consistent field iterations.
+
 |||
 | --- | --- |
 |**Related tags**| E\_ERROR, RHO\_ERROR, WG\_ERROR, FERMIDE, SCF\_ITER0\_*, CHARGE\_DECOMP, ... |
