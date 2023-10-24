@@ -40,6 +40,22 @@ In the following, we will explain the meaning of each tag.
 
 ### NODE1
 
+<!--a table in markdown-->
+| Tag | NODE1 |
+| --- | --- |
+| **Format** | the first integer in the first line |
+| **Default** | none |
+| **Related tags** | NODE2 |
+
+
+The number of processors used to divide the G-space sphere and **N1 * N2 * N3** FFT grid. **N1 * N2 * N3** must be divisible by **NODE1**. 
+The product of **NODE1** and **NODE2** is equal to the processors used by PWmat. 
+
+>TIP
+>
+>If you run the same task with different **NODE1**, the automatically generated **N123** might be different, then the results might be slightly different.
+{: .block-tip }
+
 ### NODE2
 
 ### JOB
