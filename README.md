@@ -49,7 +49,7 @@ in our examples and tutorials);
 3. `pseudopotential files`.
 
 An example of workflow from the beginning to the end:
-1. Get crystal structure from online database, or build it from visualization packages (e.g.[Q-Studio](https://mcloud.lonxun.com/){Q-Studio}).
+1. Get crystal structure from online database, or build it from visualization packages (e.g.[Q-Studio](https://mcloud.lonxun.com/)).
 2.  Download pseudopotential files from [PWmat website](http://www.pwmat.com/potential-download), then generate **etot.input** and convert structure file to PWmat format by using [PWkit](http://www.pwmat.com/pwkit-download).
 3. Run command `mpirun -np 4 PWmat` to excute PWmat directly on a single computational node (Mstation). Or run `qsub job.pbs` if one is using TORQUE PBS on HPC clusters, `sbatch job.pbs` if one is using SLURM, to submit job on HPC clusters (like [Mcloud](https://mcloud.lonxun.com/)).
 4. Collect the results by using [utilities](http://www.pwmat.com/utility-download). Prepare for the next calculation if needed.
@@ -66,8 +66,7 @@ sophisticated tasks, e.g., PyPWmat for phonon spectrum calculation, or using
 YAMBO for GW calculation. We will develop more modules in the future, we also welcome our users to provide their own modules.
 
 >##### TIP
-> Due to rapid development, there could be some minor changes for
-the tutorial, but the basic steps and ideas are the same, and the
-changes should be obvious.
+> Due to rapid development, there could be some minor changes for the tutorial, but the basic steps and ideas are the same, and the changes should be obvious.
+{: .block-tip }
 
 [1]: www.pwmat.com
