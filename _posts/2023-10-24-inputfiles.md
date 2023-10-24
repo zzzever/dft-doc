@@ -13,3 +13,12 @@ previous calculations, then one can copy them to input file for the next calcula
 
 In the following, we will explain the long version of these files respectively.
 
+## Parameter File
+
+The parameter file is the most important input file for PWmat. It is a text file, and must be named as {\bf etot.input}. It contains all the parameters for the calculation. The parameters are divided into several groups, and each group is started with a keyword in the first line. The keywords are case-insensitive. The following is an example of parameter file:
+
+```
+JOB SCF
+```
+### JOB
+
