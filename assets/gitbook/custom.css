@@ -266,7 +266,7 @@
 }
 
 pre:has(code.language-mermaid[data-processed="true"]) {
-    background-color: #ffffff;
+    background-color: #0d66a7;
     text-align: center;
 }
 
