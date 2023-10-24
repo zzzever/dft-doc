@@ -100,7 +100,7 @@ Frequeuntly used `etot.input` settings for SCF calculation:
     IN.PSP1 = Si.SG15.PBE.UPF 
     XCFUNCTIONAL = PBE 
     Ecut = 50 
-    MP\_N123 = 9 9 9 0 0 0
+    MP_N123 = 9 9 9 0 0 0
 ```
 
 
