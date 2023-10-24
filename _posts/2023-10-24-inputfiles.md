@@ -40,7 +40,6 @@ In the following, we will explain the meaning of each tag.
 
 ### NODE1
 
-<!--a table in markdown-->
 | Tag | NODE1 |
 | --- | --- |
 | **Format** | the first integer in the first line |
