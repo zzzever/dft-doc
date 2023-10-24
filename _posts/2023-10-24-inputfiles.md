@@ -57,7 +57,51 @@ The product of **NODE1** and **NODE2** is equal to the processors used by PWmat.
 
 ### NODE2
 
+| Tag | NODE2 |
+| --- | --- |
+| **Format** | the second integer in the first line |
+| **Default** | none |
+| **Related tags** | NODE1 |
+
+The number of processor groups to divide the k-points. One might check whether the number of k-points is divisible by **NODE2** for high efficiency. The larger **NODE2**, the larger the required memory.
+
+The product of **NODE1** and **NODE2** is equal to the processors used by PWmat.
+
+>WARNING
+>
+>**WARNING**: Hybrid functional calculation, k-point interpolation and electron-phonon coupling calculation do not support k-points parallelization. One must set **NODE2** = 1 in these cases.
+{: .block-warning }
+
 ### JOB
+
+| Tag | JOB |
+| --- | --- |
+| **Format** | JOB = [string] |
+| **Default** | none |
+| **Related tags** | none |
+
+Controls what PWmat will do. **JOB** can be **SCF**, **NONSCF**, **DOS**, **MOMENT**, **RELAX**, **EGGFIT**, **MD**, **TDDFT**, **NAMD**, **NEB**, **DIMER**, **SCFEP**, **POTENTIAL**, **WKM**, **HPSI**, **ATOMIC\_ORB**, **TRANS**.
+
+#### JOB = SCF
+Do self-consistent field iterations.
+|||
+| --- | --- |
+|**Related tags**| E\_ERROR, RHO\_ERROR, WG\_ERROR, FERMIDE, SCF\_ITER0\_*, CHARGE\_DECOMP, ... |
+        
+SCF calculates the charge density, the total energy. During SCF calculation, the atoms will not be moved.
+
+Frequeuntly used `etot.input` settings for SCF calculation:
+
+```bash
+    4 1 
+    IN.ATOM = atom.config 
+    JOB = SCF 
+    IN.PSP1 = Si.SG15.PBE.UPF 
+    XCFUNCTIONAL = PBE 
+    Ecut = 50 
+    MP\_N123 = 9 9 9 0 0 0
+```
+
 
 ### ACCURACY
 
