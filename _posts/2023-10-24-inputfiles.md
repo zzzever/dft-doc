@@ -15,18 +15,16 @@ In the following, we will explain the long version of these files respectively.
 
 # Parameter file (etot.input)
 The parameter file must be named as **etot.input**. It is the most important input file, used to control how PWmat runs. Here is an example of the simplest:
->
->4 1 
->
->IN.ATOM = atom.config
->
->IN.PSP1 = Si.NCPP.UPF
->
->JOB = SCF
-
+```shell
+4 1 
+IN.ATOM = atom.config
+IN.PSP1 = Si.NCPP.UPF
+JOB = SCF
+```
 >TIP
 >
 >The first line must be two positive integers, which correspond to the tags **NODE1**, **NODE2** respectively. 
+{: .block-tip }
     
 The following lines in etot.input specify the name of the structure file, the name of the pseudopotential file and type of calculation.
 You need to specify at least these parameters because they have no default values.
