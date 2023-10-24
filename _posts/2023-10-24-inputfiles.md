@@ -6,19 +6,67 @@ category: dft-doc
 layout: post
 ---
 
-PWmat needs a few basic input files to start the calculation: \hyperref[inputfile:etotinput]{parameter file} (must be named as {\bf etot.input}); \hyperref[inputfile:atomconfig]{structure file} (usually is {\bf atom.config} in our examples and tutorials); \hyperref[inputfile:pseudopotential]{pseudopotential files}. 
+PWmat needs a few basic input files to start the calculation: `parameter file` (must be named as **etot.input**); `structure file` (usually is **atom.config** in our examples and tutorials); `pseudopotential files`. 
 
-In some cases, one might also need to provide some \hyperref[optionalinput]{optional input files}, such as charge density (IN.RHO), high-symmetry-kpoints (IN.KPT), detailed solvent parameters (IN.SOLVENT). Some of them are simple so they can be written by hand. Some of them are binary files, which will be generated from the
-previous calculations, then one can copy them to input file for the next calculation. For example, one should copy {\bf OUT.VR} to {\bf IN.VR} for non-self-consistent calculation. 
+In some cases, one might also need to provide some `optional input files`, such as charge density (**IN.RHO**), high-symmetry-kpoints (**IN.KPT**), detailed solvent parameters (**IN.SOLVENT**). Some of them are simple so they can be written by hand. Some of them are binary files, which will be generated from the
+previous calculations, then one can copy them to input file for the next calculation. For example, one should copy **OUT.VR** to **IN.VR** for non-self-consistent calculation. 
 
 In the following, we will explain the long version of these files respectively.
 
-## Parameter File
+# Parameter file (etot.input)
+The parameter file must be named as **etot.input**. It is the most important input file, used to control how PWmat runs. Here is an example of the simplest:
+>
+>4 1 
+>
+>IN.ATOM = atom.config
+>
+>IN.PSP1 = Si.NCPP.UPF
+>
+>JOB = SCF
 
-The parameter file is the most important input file for PWmat. It is a text file, and must be named as {\bf etot.input}. It contains all the parameters for the calculation. The parameters are divided into several groups, and each group is started with a keyword in the first line. The keywords are case-insensitive. The following is an example of parameter file:
+>TIP
+>
+>The first line must be two positive integers, which correspond to the tags **NODE1**, **NODE2** respectively. 
+    
+The following lines in etot.input specify the name of the structure file, the name of the pseudopotential file and type of calculation.
+You need to specify at least these parameters because they have no default values.
 
-```
-JOB SCF
-```
+Except for the first line, the content has a format of **TAG** = **VALUE**. The orders of different tags can be arbitrarily changed. The names of the tags are case insensitive. One can add annotations after **\#** in line.
+    
+After running PWmat, one can also check the header of the output file **REPORT** and copy them as etot.input. 
+
+In the following, we will explain the meaning of each tag.
+
+## Control tags
+
+### NODE1
+
+### NODE2
+
 ### JOB
 
+### ACCURACY
+
+### PRECISION
+
+### CONVERGENCE
+
+### NUM_MPI_PER_GPU
+
+### NUM_BLOCKED_PSI
+
+### WF_STORE2DISK
+
+### USE_GAUSSIAN
+
+## System tags
+
+### ECUT
+
+### ECUT2
+
+### ECUT2L
+
+### ECUTP
+
+### N123
