@@ -488,7 +488,7 @@ The optional session **M\_FIX\_WKM**  is used for a special exchange-correlation
 
 We found that, in WKM calculation for the lambda for a Wannier function $\phi_k$, it might be necessary to fix some deep level bands (so they do not change during the SCF calculation. These bands are indicated by  [**nb\_fix1**, **nb\_fix2**]$.
     
-If **iflag\_wkm\_Hxc=1**, then the bands: $[1, nb\_exclude\_Hxc]$ counted from the bottom will not be included in the exchange-correlation function evaluations, and in this case the **ss1\_u** and **ss2\_u** are used to occupy the Wannier function so to get a closed shell structure.
+If **iflag\_wkm\_Hxc=1**, then the bands: **[1, nb\_exclude\_Hxc]** counted from the bottom will not be included in the exchange-correlation function evaluations, and in this case the **ss1\_u** and **ss2\_u** are used to occupy the Wannier function so to get a closed shell structure.
 
 Note, one can also use JOB=WKM to do some other calculations. For example, to fix some wave function without change during SCF, but to relax all the other wave functions, while keeping all of them orthogonal at the same time. It is not straightforward to do due to the real space form in IN.WANNIER\_00001.u etc, but it can be done.
 
