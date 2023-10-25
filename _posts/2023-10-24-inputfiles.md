@@ -187,7 +187,7 @@ Do momentum matrix calculation. Calculates the momentum matrix (oscillator stren
 
 MOMENT calculation requires input wave function, usually from a previous SCF or NONSCF calculations. One must set **IN.WG = T** in **etot.input**.
 
-To calculate the optical absorption spectrum, or dielectric constant, the momentum matrix between Kohn-Sham orbitals $\{ \psi_i \}$ needs to be calculated. Formally, this momentum matrix can be expressed as: $M_x(i,j)=<\psi_i|P_x|\psi_j>=-<\psi_i|{\partial H[k]/\partial k_x}|\psi_j>=-i <\psi_i|[H,r_x]|\psi_j>$. here subscript x actually stands for x, y, z directions. So, there are three matrix (in Cartesian coordinates). $P_x$ is the momentum operator. In the case there is no nonlocal potential, $P_x=i \nabla_x$. If only the $i \nabla_x$ is needed in the calculation, one can use utility **ug\_moment.x** to calculate the matrix based on the output wave function **OUT.WG**.
+To calculate the optical absorption spectrum, or dielectric constant, the momentum matrix between Kohn-Sham orbitals $\{ \psi_i \}$ needs to be calculated. Formally, this momentum matrix can be expressed as: $M_x(i,j)=<\psi_i\|P_x\|\psi_j>=-<\psi_i\|{\partial H[k]/\partial k_x}\|\psi_j>=-i <\psi_i\|[H,r_x]\|\psi_j>$. here subscript x actually stands for x, y, z directions. So, there are three matrix (in Cartesian coordinates). $P_x$ is the momentum operator. In the case there is no nonlocal potential, $P_x=i \nabla_x$. If only the $i \nabla_x$ is needed in the calculation, one can use utility **ug\_moment.x** to calculate the matrix based on the output wave function **OUT.WG**.
 
 However, if the nonlocal potential needs to be taken into account, there is an additional term $i(V_{NL}r_x - r_x V_{NL})$, which cannot be calculated easily. The **JOB=MOMENT** is to solve this problem, to include this additional term. The resulting momentum matrix is output in **OUT.MOMENT\_EXT\_KPT**. For example, it can be used for RPA calculation for absorption spectrum or dielectric constant calculations. Including this nonlocal term can increase the oscillator strength $|M_x|^2$ by  about $10\%$.
 
@@ -409,7 +409,7 @@ Do electron-phonon coupling calculation.
 |**Related tags**| SCFEP\_DETAIL, .. |
 
 
-The procedure is the following, one first carries out a **JOB = SCF** calculation, and **OUT.FORCE = T**, so there will be atomic forces (or perhaps before that, there will be a **JOB = RELAX**, to relax the atoms). Copy **OUT.FORCE** file into **IN.FORCE** (and set **IN.FORCE = T**). For **JOB = SCFEP**, we must have **IN.WG = T**, here **IN.WG** is copied from the **OUT.WG** from the previous **JOB = SCF** calculation. Now, in **JOB = SCFEP** calculation, the state $\psi(ist1,ikpt,ispin)$, and $\psi(ist2,kpt,ispin)$ (to be specied in the line of **SCFEP\_DETAIL**) will be used to calculate: $<\psi(ist1,ikpt,ispin)|\delta{H}/\delta{R}|\psi(ist2,ikpt,ispin)>$, this result will be represented as an perturbed atomic forces (the perturbation is proportional to $\alpha$ as specified in **SCFEP\_DETAIL**), and reported in **OUT.FORCE**. The actual coupling constants will be reported in **OUT.EP\_COEFF** (here the **FORCE\_new** has already be subtracted by **IN.FORCE**, and divided by $\alpha$).
+The procedure is the following, one first carries out a **JOB = SCF** calculation, and **OUT.FORCE = T**, so there will be atomic forces (or perhaps before that, there will be a **JOB = RELAX**, to relax the atoms). Copy **OUT.FORCE** file into **IN.FORCE** (and set **IN.FORCE = T**). For **JOB = SCFEP**, we must have **IN.WG = T**, here **IN.WG** is copied from the **OUT.WG** from the previous **JOB = SCF** calculation. Now, in **JOB = SCFEP** calculation, the state $\psi(ist1,ikpt,ispin)$, and $\psi(ist2,kpt,ispin)$ (to be specied in the line of **SCFEP\_DETAIL**) will be used to calculate: $<\psi(ist1,ikpt,ispin)\|\delta{H}/\delta{R}\|\psi(ist2,ikpt,ispin)>$, this result will be represented as an perturbed atomic forces (the perturbation is proportional to $\alpha$ as specified in **SCFEP\_DETAIL**), and reported in **OUT.FORCE**. The actual coupling constants will be reported in **OUT.EP\_COEFF** (here the **FORCE\_new** has already be subtracted by **IN.FORCE**, and divided by $\alpha$).
 
 The $\alpha$ should be small, something like 0.1, 0.2.
 
@@ -747,16 +747,19 @@ Here are some output files when USE\_GAUSSIAN=T:
 
 |||
 | --- | --- |
-|**OUT.GAUSSIAN\_H**|The matrix elements of the Hamiltonian in the Gaussian basis. $H^\sigma_{m,m'}(k) = \sum_T exp(ik\cdot T) H^\sigma_{m,m'}(T)$ where m and m' are the index of the basis, k is the K-point, $\sigma$ is the spin index (Note in current version $\sigma$ can just be 1). |
-|**OUT.GAUSSIAN\_S**|The matrix elements of the overlap matrix in the Gaussian basis. $S_{m,m'}(k) = \sum_T exp(ik\cdot T) S_{m,m'}(T)$ where m and m' are the index of the basis, k is the K-point. |
-|**OUT.GAUSSIAN\_H\_T**|The matrix elements of the Hamiltonian in the Gaussian basis, labeled by translation vector T. $H_{m,m'}(T) = \int dr \chi^*_m(r-\tau_m) \hat{H} \chi_{m'}(r-(\tau_{m'}+T))$, where m and m' are the index of the basis, T is the translation vector, $\chi_m$ is the m-th basis function, $\tau_m$ is the position of the m-th basis function(i.e. the position of the atom which the m-th basis function belongs to), $\hat{H}$ is the Hamiltonian operator. |
-|**OUT.GAUSSIAN\_S\_T**|The matrix elements of the overlap matrix in the Gaussian basis, labeled by translation vector T. $S_{m,m'}(T) = \int dr \chi^*_m(r-\tau_m) \chi_{m'}(r-(\tau_{m'}+T))$ where m and m' are the index of the basis, T is the translation vector, $\chi_m$ is the m-th basis function, $\tau_m$ is the position of the m-th basis function(i.e. the position of the atom which the m-th basis function belongs to). 
+|**OUT.GAUSSIAN\_H**|The matrix elements of the Hamiltonian in the Gaussian basis.  |
+|**OUT.GAUSSIAN\_S**|The matrix elements of the overlap matrix in the Gaussian basis.  |
+|**OUT.GAUSSIAN\_H\_T**|The matrix elements of the Hamiltonian in the Gaussian basis, labeled by translation vector T.  |
+|**OUT.GAUSSIAN\_S\_T**|The matrix elements of the overlap matrix in the Gaussian basis, labeled by translation vector T.  
 |
 |**OUT.GAUSSIAN\_BASIS\_INDEX**|The index of the basis function, the position of the basis function, the type of the basis function.|
 
     
-    
-You can use following fortran codes to read the file OUT.GAUSSIAN\_H\_T:
+Formula of OUT.GAUSSIAN\_H\_T:
+
+$$$H_{m,m'}(T) = \int dr \chi^*_m(r-\tau_m) \hat{H} \chi_{m'}(r-(\tau_{m'}+T))$$, 
+
+where m and m' are the index of the basis, T is the translation vector, $\chi_m$ is the m-th basis function, $\tau_m$ is the position of the m-th basis function(i.e. the position of the atom which the m-th basis function belongs to), $\hat{H}$ is the Hamiltonian operator.You can use following fortran codes to read the file OUT.GAUSSIAN\_H\_T:
 
 ```fortran
         subroutine read_gaussian_H_T()
@@ -797,7 +800,11 @@ You can use following fortran codes to read the file OUT.GAUSSIAN\_H\_T:
 
 Where AL(1:3,1:3) is the lattice vectors, T(1:3) is the translation vector, num\_mcgtos\_t is the number of the basis functions. (Note, T is an integer array, the acctual translation vector is AL*T.)
 
-You can use following fortran codes to read the file OUT.GAUSSIAN\_S\_T:
+Formula of OUT.GAUSSIAN\_S\_T:
+
+$$S_{m,m'}(T) = \int dr \chi^*_m(r-\tau_m) \chi_{m'}(r-(\tau_{m'}+T))$$
+
+where m and m' are the index of the basis, T is the translation vector, $\chi_m$ is the m-th basis function, $\tau_m$ is the position of the m-th basis function(i.e. the position of the atom which the m-th basis function belongs to). You can use following fortran codes to read the file OUT.GAUSSIAN\_S\_T:
 
 ```fortran
         subroutine read_gaussian_S_T()
@@ -838,7 +845,11 @@ You can use following fortran codes to read the file OUT.GAUSSIAN\_S\_T:
 
 where AL(1:3,1:3) is the lattice vectors, T(1:3) is the translation vector, num\_mcgtos\_t is the number of the basis functions. (Note, T is an integer array, the acctual translation vector is AL*T.)
 
-You can use following fortran codes to read the file OUT.GAUSSIAN\_H:
+Formula of OUT.GAUSSIAN\_H:
+
+$$H^\sigma_{m,m'}(k) = \sum_T exp(ik\cdot T) H^\sigma_{m,m'}(T)$$
+
+ where m and m' are the index of the basis, k is the K-point, $\sigma$ is the spin index (Note in current version $\sigma$ can just be 1). You can use following fortran codes to read the file OUT.GAUSSIAN\_H:
 
 ```fortran
         subroutine read_gaussian_H()
@@ -877,6 +888,11 @@ You can use following fortran codes to read the file OUT.GAUSSIAN\_H:
 ```
 where AL(1:3,1:3) is the lattice vectors, akx\_2\_t, aky\_2\_t, akz\_2\_t are the K-point coordinates, num\_mcgtos\_t is the number of the basis functions. (Note, T is an integer array, the acctual translation vector is AL*T.)
 
+Formula of OUT.GAUSSIAN\_S:
+
+$$S_{m,m'}(k) = \sum_T exp(ik\cdot T) S_{m,m'}(T)$$ 
+
+where m and m' are the index of the basis, k is the K-point.
 You can use following fortran codes to read the file OUT.GAUSSIAN\_S:
 ```fortran
         subroutine read_gaussian_S()
