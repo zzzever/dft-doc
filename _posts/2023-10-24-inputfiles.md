@@ -189,7 +189,7 @@ MOMENT calculation requires input wave function, usually from a previous SCF or 
 
 To calculate the optical absorption spectrum, or dielectric constant, the momentum matrix between Kohn-Sham orbitals $\{ \psi_i \}$ needs to be calculated. Formally, this momentum matrix can be expressed as: $M_x(i,j)=<\psi_i\|P_x\|\psi_j>=-<\psi_i\|{\partial H[k]/\partial k_x}\|\psi_j>=-i <\psi_i\|[H,r_x]\|\psi_j>$. here subscript x actually stands for x, y, z directions. So, there are three matrix (in Cartesian coordinates). $P_x$ is the momentum operator. In the case there is no nonlocal potential, $P_x=i \nabla_x$. If only the $i \nabla_x$ is needed in the calculation, one can use utility **ug\_moment.x** to calculate the matrix based on the output wave function **OUT.WG**.
 
-However, if the nonlocal potential needs to be taken into account, there is an additional term $i(V_{NL}r_x - r_x V_{NL})$, which cannot be calculated easily. The **JOB=MOMENT** is to solve this problem, to include this additional term. The resulting momentum matrix is output in **OUT.MOMENT\_EXT\_KPT**. For example, it can be used for RPA calculation for absorption spectrum or dielectric constant calculations. Including this nonlocal term can increase the oscillator strength $|M_x|^2$ by  about $10\%$.
+However, if the nonlocal potential needs to be taken into account, there is an additional term $i(V_{NL}r_x - r_x V_{NL})$, which cannot be calculated easily. The **JOB=MOMENT** is to solve this problem, to include this additional term. The resulting momentum matrix is output in **OUT.MOMENT\_EXT\_KPT**. For example, it can be used for RPA calculation for absorption spectrum or dielectric constant calculations. Including this nonlocal term can increase the oscillator strength $\|M_x\|^2$ by  about $10\%$.
 
 The calculated momentum matrix in **JOB = MOMENT** will be stored in output file **OUT.momentK.($x$).1**.
 
@@ -482,13 +482,13 @@ S_WKM2
 M_FIX_WKM    : This section is optional
 nb_fix1,nb_fix2,iflag_wkm_Hxc,nb_exclude_Hxc
 ```
-In the WKM calculation, the Wannier function $\phi_k$ will be occupied according to s1\_u, or s2\_u. The occupation ss1\_u, ss2\_u is used to make the system a full shell. This is only used when there is a special treatment for the exchange-correlatin functional by exclude some core level charge densities. Otherwise, they are not really used.    In the WKM calculation, the other "normal" wave functions $\{ \psi_i \}$ will be orthogonal to the Wannier functions $\phi_k$ included in the IN.S\_WKM file. Their total charge (from $\{ \psi_i \}$) is determined by $NUM_ELECTRON$. So, the total charge is $NUM_ELECTRON$ plus the s1\_u etc. It is a good idea to always include $NUM_ELECTRON$ in the WKM calculation.
+In the WKM calculation, the Wannier function $\phi_k$ will be occupied according to s1\_u, or s2\_u. The occupation ss1\_u, ss2\_u is used to make the system a full shell. This is only used when there is a special treatment for the exchange-correlatin functional by exclude some core level charge densities. Otherwise, they are not really used.    In the WKM calculation, the other "normal" wave functions $\{ \psi_i \}$ will be orthogonal to the Wannier functions $\phi_k$ included in the IN.S\_WKM file. Their total charge (from $\{ \psi_i \}$) is determined by **NUM\_ELECTRON**. So, the total charge is **NUM\_ELECTRON** plus the s1\_u etc. It is a good idea to always include **NUM\_ELECTRON** in the WKM calculation.
 
-The optional session $M\_FIX\_WKM$  is used for a special exchange-correlation functional treatmenf for the WKM calculation with semicore states (the states very deep in energy).
+The optional session **M\_FIX\_WKM**  is used for a special exchange-correlation functional treatmenf for the WKM calculation with semicore states (the states very deep in energy).
 
-We found that, in WKM calculation for the lambda for a Wannier function $\phi_k$, it might be necessary to fix some deep level bands (so they do not change during the SCF calculation. These bands are indicated by  $[nb\_fix1.nb\_fix2]$.
+We found that, in WKM calculation for the lambda for a Wannier function $\phi_k$, it might be necessary to fix some deep level bands (so they do not change during the SCF calculation. These bands are indicated by  [**nb\_fix1**, **nb\_fix2**]$.
     
-If $iflag\_wkm\_Hxc=1$, then the bands: $[1, nb\_exclude\_Hxc]$ counted from the bottom will not be included in the exchange-correlation function evaluations, and in this case the $ss1\_u$ and $ss2\_u$ are used to occupy the Wannier function so to get a closed shell structure.
+If **iflag\_wkm\_Hxc=1**, then the bands: $[1, nb\_exclude\_Hxc]$ counted from the bottom will not be included in the exchange-correlation function evaluations, and in this case the **ss1\_u** and **ss2\_u** are used to occupy the Wannier function so to get a closed shell structure.
 
 Note, one can also use JOB=WKM to do some other calculations. For example, to fix some wave function without change during SCF, but to relax all the other wave functions, while keeping all of them orthogonal at the same time. It is not straightforward to do due to the real space form in IN.WANNIER\_00001.u etc, but it can be done.
 
