@@ -128,7 +128,6 @@ Frequeuntly used `etot.input` settings for NONSCF calculation:
 ```
 In addition, some specific parameters can be set. Please refer to section [in.nonscf]() for details.
 
->WARNING
 >
 >**WARNING**: when using hybrid functional, one must copy **OUT.HSEWR($i$)** files from previous SCF calculation to the current NONSCF directory.
 {: .block-warning }
@@ -174,17 +173,17 @@ Frequently used `etot.input` settings for k-point interpolation scheme DOS calcu
     DOS_DETAIL = 1 9 9 9
     IN.WG = T
 ```
->WARNING
 >
 >**WARNING**: one must copy **OUT.EIGEN** file from previous calculation to the current DOS directory.
 {: .block-warning }
 
 #### JOB = MOMENT
-Do momentum matrix calculation.
+Do momentum matrix calculation. Calculates the momentum matrix (oscillator strength) between Kohn-Sham orbitals, and the nonlocal potential is considered.
 
 |||
 | --- | --- |
 |**Related tags**| IN.WG, ... |
+
 
 MOMENT calculation requires input wave function, usually from a previous SCF or NONSCF calculations. One must set **IN.WG = T** in **etot.input**.
 
@@ -261,36 +260,36 @@ The egghead problem is caused by the numerical discretization of the real space 
 
 1. set the **JOB = EGGFIT** in the **etot.input** and give an additional setting: **egg\_detail = np1, np2, np3**; **ECUT2 = 4ECUT**, **ECUT2L = ECUT2**; Here, **np1**, **np2**, **np3** indicates the point to probe inside a grid, usually they are 2,2,2 or 4,4,4. After running PWmat, it will give a new file **CC.egghead** which will be used in the following step.
 
-Frequently used `etot.input` settings for eggfit calculation:
+    Frequently used `etot.input` settings for eggfit calculation:
 
-```bash
-    4 1
-    IN.ATOM = atom.config
-    JOB = EGGFIT
-    EGG_DETAIL = 2 2 2
-    IN.PSP1 = Si.SG15.PBE.UPF
-    XCFUNCTIONAL = PBE
-    Ecut = 50
-    Ecut2 = 200
-    MP_N123 = 9 9 9 0 0 0 #modify ``NK1 NK2 NK3''  according to structure lattice
-```
+    ```bash
+        4 1
+        IN.ATOM = atom.config
+        JOB = EGGFIT
+        EGG_DETAIL = 2 2 2
+        IN.PSP1 = Si.SG15.PBE.UPF
+        XCFUNCTIONAL = PBE
+        Ecut = 50
+        Ecut2 = 200
+        MP_N123 = 9 9 9 0 0 0 #modify ``NK1 NK2 NK3''  according to structure lattice
+    ```
 
 2. set the **JOB = RELAX** with an additional setting: **EGG\_CORR = T**, **ECUT2 = 4ECUT**, **ECUT2L = ECUT2**. **EGG\_CORR = T** means PWmat will read **CC.egghead** to do the egghead correction during relaxation.
 
-Frequently used `etot.input` settings for atomic relaxation with egg\_corr:
+    Frequently used `etot.input` settings for atomic relaxation with egg\_corr:
 
-```bash
-    4 1
-    IN.ATOM = atom.config
-    JOB = RELAX
-    RELAX_DETAIL = 1 500 0.01
-    IN.PSP1 = Si.SG15.PBE.UPF
-    XCFUNCTIONAL = PBE
-    Ecut = 50
-    Ecut2 = 200
-    EGG_CORR = T  #read ``CC.egghead'' file from previous ``JOB=EGGFIT''
-    MP_N123 = 9 9 9 0 0 0 #modify ``NK1 NK2 NK3''  according to structure lattice
-```
+    ```bash
+        4 1
+        IN.ATOM = atom.config
+        JOB = RELAX
+        RELAX_DETAIL = 1 500 0.01
+        IN.PSP1 = Si.SG15.PBE.UPF
+        XCFUNCTIONAL = PBE
+        Ecut = 50
+        Ecut2 = 200
+        EGG_CORR = T  #read ``CC.egghead'' file from previous ``JOB=EGGFIT''
+        MP_N123 = 9 9 9 0 0 0 #modify ``NK1 NK2 NK3''  according to structure lattice
+    ```
 
 #### JOB = MD
 Do Born-Oppenheimer molecular dynamics (MD) simulations.
@@ -299,7 +298,8 @@ Do Born-Oppenheimer molecular dynamics (MD) simulations.
 | --- | --- |
 |**Related tags**| MD\_DETAILS, IN.MDOPT, .. |
 
-Must have variable **MD\_DETAIL** in **etot.input** (see section [MD\_DETAIL](#subsection:MDDETAIL)). The PWmat can perform: Verlet, Nose-Hoover, Langevin, Berendsen dynsmics. We have a concise output as reported in **MDSTEPS**. The atomic movements for every step are reported in **MOVEMENT**. One can also do special MD, e.g., with applied different force on each atom, or different specified temperature on each atom within the Langevin dynamics. Inside the **atom.config**, in the POSITION section, the last three column 1,1,1, determines whether this atom will move in the x,y,z directions (see section [atom.config](#atomconfig)): 1,1,1, means move, 0,0,0 means fix. If dynamics can change the unit cell vector (e.g., in NPT calculation), one can also use **STRESS\_MASK** section in **atom.config** to specify which cell vector component to change.
+Must have variable ``MD\_DETAIL'' in etot.input [MDDETAIL]().
+The PWmat can perform: Verlet, Nose-Hoover, Langevin, Berendsen dynsmics. We have a concise output as reported in MDSTEPS. The atomic movements for every step are reported in MOVEMENT. One can also do special MD, e.g., with applied different force on each atom, or different specified temperature on each atom within the Langevin dynamics. Inside the atom.config, in the POSITION section, the last three column 1,1,1, determines whether this atom will move in the x,y,z directions (see section \ref{inputfile:atomconfig}): 1,1,1, means move, 0,0,0 means fix. If dynamics can change the unit cell vector (e.g., in NPT calculation), one can also use STRESS\_MASK section in atom.config to specify which cell vector component to change.
 
 Frequently used `etot.input` settings for MD calculation:
 
@@ -332,7 +332,9 @@ Do non-adiabatic molecular dynamics.
 | --- | --- |
 |**Related tags**| MD\_DETAIL, NAMD\_DETAIL, TDDFT\_TIME, TDDFT\_SPACE, TDDFT\_STIME, IN.A\_FIELD, IN.MDOPT, .. |
 
-This is done under the approximation of Born-Oppenbeimer MD (BO-MD) for nuclear movement. So the time to do NAMD is almost the same as that for MD. The actual NAMD simulation is done as a post-processing after the DFT BO-MD. It will generate a file **OUT.NAMD**. Some post-processing tools are provided to analyze the NAMD results. Some of them are in the **post\_namd** directory. Some of them are in the **post\_tddft** directory. The **OUT.NAMD** file can be used to calculate the optical absorption spectrum, or dielectric constant, or electron-phonon coupling, or phonon spectrum, or phonon DOS, or phonon dispersion, or phonon linewidth, or phonon lifetime, or phonon thermal conductivity, or phonon thermal expans
+This is done under the approximation of Born-Oppenbeimer MD (BO-MD) for nuclear movement. So the time to do NAMD is almost the same as that for MD. The actual NAMD simulation is done as a post-processing after the DFT BO-MD. It will generate a file OUT.NAMD. Some post-processing program (e.g., the "namd\_dm.x" in [Boltzman-NAMD](http://www.pwmat.com/module-download) can be used to study the single carrier dynamics during the BO-MD process. It only simulates the behavior of a single carrier. While it takes into account the effects from other electron and phonon to the dynamics of this single carrier (hence, include the electron-phonon coupling etc), it ignores the effects of this carrier to the dynamics of other electron and phonon (i.e, there is no feedback from carrier to phonon, or carrier to other electron, thus it cannot be used to study polaron effect).
+    
+Advantageously, it also does not have the erroneous carrier self-interaction. It is suitable to study the carrier dynamics (e.g., charge transfer between molecule, or spin dynamics of one defect) of some large systems. Compare to TDDFT, one advantage is that it can do much bigger system with much longer time. The details are also described in [NAMD](appendix B) setction.
 
 #### JOB = NEB
 
@@ -344,7 +346,6 @@ Do nudged elastic band (NEB) calculation.
 
 It must have a variable **NEB\_DETAIL** in **etot.input** (see section [NEB\_DETAIL](#subsection:NEBDETAIL)). Besides **IN.ATOM**, which gives the first valley site atomic position, there must be a second valley site position given in the **NEB\_DETAIL** line. One must precalculate (e.g., using **JOB=RELAX**) the atomic configuration of these two valley sites before using **JOB=NEB** to calculate their barrier. See [NEB\_DETAIL](#subsection:NEBDETAIL) for more details and how to set up the calculations. Output files: **RELAXSTEPS**, **NEB.BARRIER**, **MOVEMENT**. **NEB.BARRIER** gives the barrier height information, while **MOVEMENT** gives all the image atom.config files within each NEB step.
 
->WARNING
 >
 >**WARNING**: During NEB calculation, if you encounter the following error: ``equivalent atom not found under symm op, stop'', please turn off the symmetry, just set **MP\_N123 = NK1 NK2 NK3 0 0 0 2** (see section [MP\_N123](#subsection:MPN123))
 {: .block-warning }
@@ -407,6 +408,7 @@ Do electron-phonon coupling calculation.
 | --- | --- |
 |**Related tags**| SCFEP\_DETAIL, .. |
 
+
 The procedure is the following, one first carries out a **JOB = SCF** calculation, and **OUT.FORCE = T**, so there will be atomic forces (or perhaps before that, there will be a **JOB = RELAX**, to relax the atoms). Copy **OUT.FORCE** file into **IN.FORCE** (and set **IN.FORCE = T**). For **JOB = SCFEP**, we must have **IN.WG = T**, here **IN.WG** is copied from the **OUT.WG** from the previous **JOB = SCF** calculation. Now, in **JOB = SCFEP** calculation, the state $\psi(ist1,ikpt,ispin)$, and $\psi(ist2,kpt,ispin)$ (to be specied in the line of **SCFEP\_DETAIL**) will be used to calculate: $<\psi(ist1,ikpt,ispin)|\delta{H}/\delta{R}|\psi(ist2,ikpt,ispin)>$, this result will be represented as an perturbed atomic forces (the perturbation is proportional to $\alpha$ as specified in **SCFEP\_DETAIL**), and reported in **OUT.FORCE**. The actual coupling constants will be reported in **OUT.EP\_COEFF** (here the **FORCE\_new** has already be subtracted by **IN.FORCE**, and divided by $\alpha$).
 
 The $\alpha$ should be small, something like 0.1, 0.2.
@@ -432,7 +434,7 @@ Do H$\psi$ calculation.
 | --- | --- |
 |**Related tags**| IN.WG, IN.VR, IN.RHO, .. |
 
-This is used to calculate $hpsi_i=H\psi_i$ and output the wave function $hpsi_i$ in **OUT.HPSI** (and **OUT.HPSI\_2** for spin=2). It must has a **IN.WG = T**, and have **IN.VR = T** or **IN.RHO = T** to have the proper Hamiltonian. This is provided, so one can carry out some analysis, for example to calculate the electron-phonon coupling.
+This is used to calculate $H\psi_i$ and output the wave function $H\psi_i$ in **OUT.HPSI** (and **OUT.HPSI\_2** for spin=2). It must has a **IN.WG = T**, and have **IN.VR = T** or **IN.RHO = T** to have the proper Hamiltonian. This is provided, so one can carry out some analysis, for example to calculate the electron-phonon coupling.
 
 #### JOB = WKM
 
@@ -442,8 +444,11 @@ Do Wannier Koopmann method (WKM) calculation.
 | --- | --- |
 |**Related tags**| IN.WANNIER, IN.S\_WKM, .. |
 
+
 When we do a DFT calculations, one difficulty is to calculate a right bandstructure with right band gaps which can agree well with experimental results. However, it is a common sense that LDA, PBE and even HSE (when $\alpha$ is set to be 0.25) ofter nderestimate band gap results. For band gap calculation, we often define the band gap as the difference between the electron affinity (EA) energy and the ionization energy (IE). Here, EA can be expressed as E(N+1)-E(N) and IE as E(N)-E(N-1). N is the number of electrons in the neutral system, and N+1 and N-1 indicate the system has one more or one less electron respectively. E(N) is the self-consistent energy of the system with N electrons.
+
 [WKM.png]
+
 total energy profile describes an LDA total energy calculation and an ``exact'' energy result for an open system
 
 One possible way to overcome this underestimation is to perform a Koopmans condition on normal DFT calculations.
@@ -456,13 +461,13 @@ $$
         E_{WKM}(\{s_k\}) = E_{LDA}(\{s_k\}) + \sum\limits_{k}E_k(s_k)
 $$
 
-Here, w indicates the wannier functions. s$_k$ (0 < s$_k$ < 1) indicates the occupation number of this Wannier function. During the LDA calculation, we add or remove the electron from $\phi_k$ of one spin channel and all the other orbitals in this spin channel should be orthogonal to this Wannier function $\phi_k$. All the other orbitals (except this oneWannier function) are variationally changed to minimize the total energy, which results in the ground state energy E$_{LDA}$({s$_k$}). Thus, a simple analytical expression of E$_{LDA}$({s$_k$}) can be writen as
+Here, w indicates the wannier functions. $s_k$ (0 < $s_k$ < 1) indicates the occupation number of this Wannier function. During the LDA calculation, we add or remove the electron from $\phi_k$ of one spin channel and all the other orbitals in this spin channel should be orthogonal to this Wannier function $\phi_k$. All the other orbitals (except this oneWannier function) are variationally changed to minimize the total energy, which results in the ground state energy E$_{LDA}$({$s_k$}). Thus, a simple analytical expression of $E_{LDA}$({$s_k$}) can be writen as
 
 $$
         E_k(s_k) = \lambda_ks_k(1 - s_k)
 $$
 
-The $\lambda_k$ can be determined from E$_{LDA}$({s$_k$}) (to make E$_{WKM}$({s$_k$}) a straight line vs. s$_k$). $\lambda_k$ can be calculate by PWmat JOB = WKM mode.
+The $\lambda_k$ can be determined from $E_{LDA}$({$s_k$}) (to make E$_{WKM}$({$s_k$}) a straight line vs. $s_k$). $\lambda_k$ can be calculate by PWmat JOB = WKM mode.
 
 It requires the input of Wannier wave functions (in real space), provided by files in the name of IN.WANNIER\_00001.u, IN.WANNIER\_00002.u IN.WANNIER\_00001.d IN.WANNIER\_00002.d etc. They are written in the same format as the charge density IN.RHO (thus the Wannier wave functions are real). Each of this file contain only one Wannier function $\phi_k$. The information for these Wannier functions are provided in a file called: IN.S\_WKM. They look like
 
@@ -477,7 +482,7 @@ S_WKM2
 M_FIX_WKM    : This section is optional
 nb_fix1,nb_fix2,iflag_wkm_Hxc,nb_exclude_Hxc
 ```
-In the WKM calculation, the Wannier function $\phi_k$ will be occupied according to s1\_u, or s2\_u. The occupation ss1\_u, ss2\_u is used to make the system a full shell. This is only used when there is a special treatment for the exchange-correlatin functional by exclude some core level charge densities. Otherwise, they are not really used.    In the WKM calculation, the other "normal" wave functions $\{ \psi_i \}$ will be orthogonal to the Wannier functions $\phi_k$ included in the IN.S\_WKM file. Their total charge (from $\{ \psi_i \}$) is determined by $NUM\_ELECTRON$. So, the total charge is $NUM\_ELECTRON$ plus the s1\_u etc. It is a good idea to always include $NUM\_ELECTRON$ in the WKM calculation.
+In the WKM calculation, the Wannier function $\phi_k$ will be occupied according to s1\_u, or s2\_u. The occupation ss1\_u, ss2\_u is used to make the system a full shell. This is only used when there is a special treatment for the exchange-correlatin functional by exclude some core level charge densities. Otherwise, they are not really used.    In the WKM calculation, the other "normal" wave functions $\{ \psi_i \}$ will be orthogonal to the Wannier functions $\phi_k$ included in the IN.S\_WKM file. Their total charge (from $\{ \psi_i \}$) is determined by $NUM_ELECTRON$. So, the total charge is $NUM_ELECTRON$ plus the s1\_u etc. It is a good idea to always include $NUM_ELECTRON$ in the WKM calculation.
 
 The optional session $M\_FIX\_WKM$  is used for a special exchange-correlation functional treatmenf for the WKM calculation with semicore states (the states very deep in energy).
 
