@@ -757,7 +757,7 @@ Here are some output files when USE\_GAUSSIAN=T:
     
 Formula of OUT.GAUSSIAN\_H\_T:
 
-$$$H_{m,m'}(T) = \int dr \chi^*_m(r-\tau_m) \hat{H} \chi_{m'}(r-(\tau_{m'}+T))$$, 
+$$H_{m,m'}(T) = \int dr \chi^*_m(r-\tau_m) \hat{H} \chi_{m'}(r-(\tau_{m'}+T))$$, 
 
 where m and m' are the index of the basis, T is the translation vector, $\chi_m$ is the m-th basis function, $\tau_m$ is the position of the m-th basis function(i.e. the position of the atom which the m-th basis function belongs to), $\hat{H}$ is the Hamiltonian operator.You can use following fortran codes to read the file OUT.GAUSSIAN\_H\_T:
 
