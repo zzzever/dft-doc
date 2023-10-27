@@ -1367,3 +1367,573 @@ ldau\_mix is used to control the simple  mixing parameter for the LDA+U local or
 pulay\_weight\_spin control the weight we used in Pulay mixing for SPIN=2 calculations. In SPIN=2, the charge densities of spin up and down are recombined into total charge density and magnetic density (the difference between up and down). The pulay\_weight\_spin control what weight we give to the magnetic density when we carry out pulay mixing. Pulay mixing is done by mixing the previous density in and out pair, trying to reduce the resulting in and out difference. When we judge how large is the in-out difference, we need to use a weight for the total charge part and spin part.
 
 pulay\_weight\_ns is the weight factor in the pulay mixing for the case of LDA+U to place in the local orbital occupation matrix n, against the charge density.
+
+### NONLOCAL
+
+|Tag|NONLOCAL|
+| --- | --- |
+|**Format**|NONLOCAL = 1 / 2|
+|**Default**|NONLOCAL = 2|
+
+The nonlocal is the nonlocal pseudopotential implementation flag.
+
+NONLOCAL = 1, no nonlocal potential. One has to know what he/she is doing. This usually should never be used, unless for testing purpose.
+
+NONLOCAL = 2, the default, real space nonlocal pseudo potential implementation. It used the mask function method.
+
+NONLOCAL = 3, g space nonlocal pseudo potential implementation. 
+
+## Exchange-correlation tags
+
+### XCFUNCTIONAL
+
+|Tag|XCFUNCTIONAL|
+| --- | --- |
+|**Format**|XCFUNCTIONAL = LDA / PBE / HSE / PBESOL / PW91 / TPSS / SCAN / LDAWKM / LDAWKM2 / XC\_LDA\_X+XC\_LDA\_C\_PZ / XC\_GGA\_C\_PBE+XC\_GGA\_X\_PBE / XC\_HYB\_GGA\_XC\_B3LYP / XC\_MGGA\_C\_TPSS+XC\_MGGA\_X\_TPSS / SCAN + rVV10 / LDA/PBE/HSE + rVV10 / LDAWKM/LDAWKM2|
+|**Default**|XCFUNCTIONAL = PBE|
+
+XCFUNCTIONAL is used to Control the exchange-correlation functional. PWmat supports the LIBXC library for its LDA/GGA/METAGGA functional. The most commonly used functional include: LDA, PBE, HSE, PBESOL, PW91, TPSS etc. If you want to use other functional from LIBXC, you can set xcfunctional as indicated about.
+
+If XCFUNCTIONAL = HSE, PWmat will do HSE calculation. One could use the optional parameter: HSE\_OMEGA, HSE\_ALPHA. Their default values are 0.2, 0.25 (the HSE06). Note PBE0 (the long range exchange integral) is just a special form of HSE with HES\_OMEGA parameter close to zero (see the section HSE\_OMEGA, HSE\_ALPHA). 
+
+For hybrid-functionals in libxc except HSE and B3LYP, you should set HSE\_ALPHA and HSE\_BETA that consistent with your chosen xc functional. PWmat will set default HSE\_ALPHA and HSE\_BETA for B3LYP and HSE, but not for others.
+
+If there are rVV10, one can optionally use RVV10\_DETAIL to specific RVV10 parameters.
+
+The LDAWKM and LDAWKM2 options are really WKM calculations (together with JOB=SCF). In particular, what it is doing is the following: For LDAWKM:
+
+$$H=H_{LDA} + \sum_k \lambda_k s_k (1-s_k) $$
+
+and for LDAWKM2:
+
+$$H=H_{LDA} + \sum_k \lambda_k s_k $$
+
+Here $s_k$ are the occupation number of Wannier functions $\phi_k$ defined as:
+
+$$S(k1,k2)= \sum_j <\psi_j|\phi_{k1}> <\phi_{k2}|\psi_j> occ(j) $$
+
+Here $occ(j)$ is the occupation of the Kohn=Sham wave function $\psi_j$. Thus: $s_k=S(k,k)$.
+    
+The parameters $\lambda_k$ are input from the file IN.WANNIER\_PARAM. The Wannier functions in spin-up channel and spin-down channel are input from files: IN.WANNIER\_$k$.u, IN.WANNIER\_$k$.d respectively. You can check \ref{otherinput:in.wannier} for details.
+
+For the LDAWKM, LDAWKM2 calculations, besides the usually results shown in REPORT, there are also results in OUT.WANNIER\_S (the diagonal result of s\_k) and OUT.WANNIER\_SS (the full S(k1,k2) matrix) for all the Wannier functions.
+
+### HSE\_DETAIL
+
+|Tag|HSE\_DETAIL|
+| --- | --- |
+|**Format**|HSE\_DETAIL = HSE\_MIX, MAX\_SXP, TOLHSE\_MIX, HSE\_DN, HSE\_PBE\_SCF, CHECK\_DSXH|
+|**Default**|HSE\_DETAIL = 1, 1, 0.0, 6, 1, 1|
+
+This is an optional choice when functional=HSE. It specifies all the details for a HSE SCF calculation.
+   
+Besides these parameters, there are other parameter which can also affect the convergence of the HSE atomic relaxation or phonon calculation, in particular the Ecutp parameter. Ecutp=4Ecut might be needed to provide sufficient accurate force. However, since increase Ecutp can significantly increase the computational time, one only use this option is Ecutp=Ecut (the default) has some problems. See the section for Ecutp.
+
+**HSE\_MIX**, the Fock exchange kernel mixing parameter during SCF calculation (not confuse this with the HSE alpha parameter in the functional itself). It could be larger than one (e.g., 1.2). This is a bit like the charge mixing factor. Default is 1. Recommend 1 for most cases. If it is too large, it can blow up the convergence.
+
+**MAX\_SXP**, the maximum number of Fock exchange kernel mixing terms. Numbers larger than one (e,g., 2, 3) can speed-up the HSE convergence. But each increase will cost one extra memory usage at the size of a wave function. This is like the length of Pulay mixing for charge mixing algorithm. But it is for the Fock exchange term. The default value is 1 (no Pulay mixing).
+
+**TOLHSE\_MIX**, the tolerance for the Fock exchange term mixing for the HSE SCF iteration to stop. The default value is 0.d0. One can also use value 1.E-03. Note, in the output (screen printing), REPORT , there is one line:
+```bash
+update_sxp(err)(eV) = 0.2222E-02, 0.1111E-02
+```
+
+**UPDATE\_SXP** correspond to the TOLHSE\_MIX value. The first value (0.2222E-02) represents the actual Fock exchange term changes (error) after the Fock exchange term 'sxp' has been updated. The second value (0.1111-02) represent the predicted value (error) after doing Fock exchange pulay mixing when MAX\_SXP $>$ 1.
+
+**HSE\_DN**, the number of SCF steps for each Fock exchange kernel update. Default value is 6. Recommend 3 to 10.  In our algorithm, each Fock exchange kernel update is followed by HSE\_DN steps of the SCF step (without updating the Fock exchange kernel). This HSE\_DN steps have the cost of PBE to run for each step, thus it is relatively cheap. Since each Fock exchange kernel update is expensive, this parameter is important. One wants the HSE\_DN SCF step to converge the charge density etc. following each Fock exchange kernel update. But too large HSE\_DN might not be so helpful and can still be costly to run. So, one wants to choose this parameter carefully. If one finds the HSE calculation does not converge, one might want to increase HSE\_DN. Note, the total number of SCF steps specified in SCF\_ITER0\_X, SCF\_ITER1\_X counts both the SCF update step and the Fock excahnge update steps.
+
+**HSE\_PBE\_SCF**, the parameter define, for HSE SCF calculation, whether one wants to do one PBE calculation first. The default is 1 (do PBE SCF calculation first). If it is set to 0, that means doing the HSE calculation first, without doing a pre-PBE calculation.
+
+**CHECK\_DSXH**, the parameter define, for HSE SCF calculation, whether check the convergency of ACE projector. The check may fail that SCF can not get the demanded accuracy(check REPORT file:ending\_scf\_reason = d\_sxp.gt.d\_sxp\_laststep ), then one can try CHECK\_DSXH=0. The default is 1.
+
+Overall, we recommend to use HSE\_MIX=1, MAX\_SXP=1, TOLHSE\_MIX=0.0, HSE\_DN=3-6, HSE\_PBE\_SCF=1. If there are problems to converge the HSE SCF, one might want to consider MAX\_SXP=2,3, and increase HSE\_DN.
+
+### HSE\_OMEGA
+
+|Tag|HSE\_OMEGA|
+| --- | --- |
+|**Format**|HSE\_OMEGA = value|
+|**Default**|HSE\_OMEGA = 0.2|
+
+The screening parameter for HSE like hybrid functionals. Refer to J. Chem. Phys. 118, 8207 (2003) and and J. Chem. Phys. 124, 219906 (2006) for more information. PWmat support range separated hybrid functional calculations. It separate the exchange integration into long range and short range. This parameter is used to provide the range, used in the way of $\omega r$. The default value is 0.2 1/\AA. So, bigger this value, shorter the cut-off to distinguish the short range and long range.
+
+### HSE\_ALPHA
+
+|Tag|HSE\_ALPHA|
+| --- | --- |
+|**Format**|HSE\_ALPHA = value|
+|**Default**|HSE\_ALPHA = 0.25|
+
+The mixing parameter of the explicit short range Fock exchange part. The default is 0.25. Combined HSE\_OMEGA, the exchange correlation energy is:
+
+$$E_{xc}=\alpha*E_x(FOCK,\omega)-\alpha*E_x(PBE,\omega)+E_x(PBE)+E_c$$
+
+Here $E_x(FOCK,\omega)$ is the explicit short range Fock exchange integral with the Coulomb integration truncated by $\omega$, $E_x$(PBE) is the PBE exchange density functional energy, $E_x(PBE,\omega)$ is the short range PBE exchange density functional energy with the range defined by $\omega$.
+
+### HSE\_BETA
+
+|Tag|HSE\_BETA|
+| --- | --- |
+|**Format**|HSE\_BETA = value|
+|**Default**|HSE\_BETA = 0.0|
+
+The mixing parameter of the explicit long range Fock exchange part. The default is 0.0. PWmat provides support for a separated range hybrid calculations (all to be called HSE). The default $\beta$ is zero, thus no long range part. But one can also input a nonzero $\beta$. Sometime it is argued that, to get the correct optical properties, one should use 1/dielectric-constant as $\beta$ for bulk systems.
+
+When $\beta$ is nonzero, the final XC functional is:
+
+$E_{xc}=\alpha*E_x(FOCK,\omega)+\beta*(E_x(FOCK,full)-E_x(FOCK,\omega))+E_x(PBE)-\alpha*E_x(PBE,\omega)-\beta*(E_x(PBE)-E_X(PBE,\omega))+E_c$.
+    
+Here $E_x(FOCK,\omega)$ is the explicit short range Fock exchange integral with the Coulomb integration truncated by $\omega$, $E_x(FOCK,full)$ is the full explicit exchange integral,  $E_x$(PBE) is the PBE exchange density functional energy, $E_x(PBE,\omega)$ is the short range PBE exchange density functional energy with the range defined by $\omega$.
+    
+It has been argued that such a range separated HSE function can be used to replacing more advanced method like GW to provide approximated electronic structures.
+
+### HSEMASK\_PSP
+
+|Tag|HSEMASK\_PSP|
+| --- | --- |
+|**Format**|HSEMASK\_PSP1 = ampl1 size1|
+||HSEMASK\_PSP2 = ampl2 size2|
+|**Default**|HSEMASK\_PSP1 = 0.0 0.0|
+||HSEMASK\_PSP2 = 0.0 0.0|
+
+This is a special option for HSE, for cases where one wants to use different HSE mixing parameters for different regions (e.g., atoms) in heterostructural calculations.Since the HSE mixing parameter is very much an empirical parameter, in order to get the correct band gap at different regions (e.g., in a Si/SiO2 heterostructure), one might want to use different mixing parameters for these regions [HSEMASK](). The parameter provided here can accomplish that. 
+
+>
+>**TIP**: If you use the same pseudo for different parameter, Si for example, you can make a copy of the Si.SG15.PBE.UPF and rename it as Ge.SG15.PBE.UPF, change the element line Si to Ge in the UPF file, if you want to do MD or TDDFT calculations, plesae add an extra mass line under the element line in the pseudo UPF file, etc. mass="28.085" , if you don't do this, the software will use the mass of element Ge, that will make error result.
+
+These are parameters used to provide an element specified HSE mixing parameter HSE\_ALPHA.The size1, size2... are in Bohr unit. The parameter can adjust the gap of HSE calculation with different  setting for different atomic types.
+
+The explicit Fock exchange integral (including the mixing parameter) is:
+    
+$$ E_x(Fock)= \alpha \sum_i \sum_j o(i) o(j) \int \int \psi^*_i(r)\psi_j(r) m(r) \frac{erfc(|r-r'|\omega)}{|r-r'|} m(r') \psi_i(r')\psi^*_j(r') d^3r d^3r'$$
+
+Here the o(i) is the orbital i occupation function, and mask function m(r) is: $m(r)=1+\sum_R ampl_R exp(-(r-R)^2/size_R^2)$, here ampl$_R$ and size$_R$ are the parameters input from HSEMASK\_PSP1,etc.
+
+Note, the effective HSE\_ALPHA is the default HSE\_ALPHA multiplied by m(r)$^2$, which is then determined by ampl1, ampl2, etc. The ampl1 itself is not HSE\_ALPHA.
+
+### HSE\_KPT\_TREATMENT
+
+|Tag|HSE\_KPT\_TREATMENT|
+| --- | --- |
+|**Format**|HSE\_KPT\_TREATMENT = flag\_double\_grid flag\_vq\_interp vq\_interp\_range|
+|**Default**|HSE\_KPT\_TREATMENT = 1 0 1.0|
+
+This is a special option for HSE, especially for JOB=NONSCF calculations for HSE bandstructures. In HSE calculation, when bandstructure is calculated, new kpoints are provided from IN.KPT, and the wave functions from JOB=SCF calculation on a MP kpoint grid k\_prime=(NQ1,NQ2,NQ3) are used for the Fock exchange integral kernel. However, since the new kpoints from the IN.KPT are not in the k\_prime grid, some special treatments are needed to deal with this. We provided two options for this. The default option is flag\_double\_grid=1, flag\_vq\_interp=0. The default value should be good for most cases. flag\_double\_grid=1 means a special treatment for q=k-k\_prime+G. A double grid is defined on top of (within) the (NQ1,NQ2,NQ3) grid (i.e, the grid consists of lines 0, 2, 4,.. etc), the Fock exchange contribution of the k\_prime for its q on the double grid will be deleted (its corresponding Coulomb kernetl vq(q) is set to zero), while multipling the contribution from the other k\_prime points by a factor of 8/7. This can be useful, e.g., to have the correct symmetry, and make sure X point result is the same as the -X point result. Note, for JOB=SCF, one can choose flag\_double\_grid=1 or 0, although we do recommend 1 for SCF.  flag\_vq\_interp=0 means the vq interpolation is not used (vq\_interp\_range is not used in this case). 
+    
+For JOB=SCF, we can only use flag\_vq\_iinterp=0. In this case, a shifting of k\_prime is used. Basically, the 8 k\_prime points on the cube enclosing k are shifted to k, one at a time, so to make k points on the k\_prime grid. The 8 shifting are then linearly added using  linear interpolation weights. Note, only the kernel vq are averaged, so there is no extra FFTs. We strongly recommend this option for JOB=NONSCF for most cases. However, due to the linear interpolation, on the very small energy scale, one can have a small linear kink on the bandstructure, especially at the high symmetry point. Here, we provide another option: flag\_double\_grid=0 and flag\_vq\_interp=1. In this case, the k\_prime points are not shifted, and vq are calculated using the formula, but for q close to zero, within a cutoff qcut=dq*vq\_interp\_range (dq is the NQ1,NQ2,NQ3 grid interval size), the calculated vq (which is kind of diverging for q close to zero) is switched (using a cos function) into the Gygi's formula exxvq term. The vq\_interp\_range (usually around 1) can be used to control the range of this switching (morphing). Larger the range, smoother will be the bandstructure. Note, since we are using flag\_double\_grid=0, the energy of k point even when k=k\_prime might slightly different from the SCF value when this option is used. But when flag\_vq\_interp=0 is used, on the k\_prime point, the JOB=NONSCF bandstructure value is exactly the same as the JOB=SCF result. 
+
+## JOB-related tags
+
+### DOS\_DETAIL
+
+|Tag|DOS\_DETAIL|
+| --- | --- |
+|**Format**|DOS\_DETAIL = IDOS\_interp, NQ1, NQ2, NQ3|
+|**Default**|DOS\_DETAIL = 0|
+
+
+IDOS\_interp=0 : it will not use the k-point interpolation scheme for the JOB=DOS calculation.
+   
+IDOS\_interp=1 : it will use the standard interpolation scheme and generate OUT.overlap\_uk.
+    
+IDOS\_interp=2 : it will use the second order interpolation scheme and generate OUT.overlap\_uk.2.
+
+When IDOS\_interp=1 or 2, the interpolation borrows the method used in HSE calculation, the wave functions are first FFT into real space, then the overlap between different k-points are done. For very large systems and many k-points, it might run out of memory, one can try a smaller ECUTP / P123 to reduce the memory requirement.
+    
+NQ1, NQ2, NQ3 : must equal to the MP\_N123 in the last SCF or NONSCF run which generated the wave functions OUT.WG (used as IN.WG in the current DOS run).
+
+>
+>**WARNING**: When IDOS\_interp = 1 / 2, kpoint parallelization is not allowed.
+{: .block-warning}
+
+>
+>**WARNING**: When IDOS\_interp = 2, NQ1,NQ2, NQ3 needs to be greater than or equal to 4.
+{: .block-warning}
+
+### NUM\_DOS\_GRID
+
+|Tag|NUM\_DOS\_GRID|
+| --- | --- |
+|**Format**|NUM\_DOS\_GRID = num|
+|**Default**|NUM\_DOS\_GRID = 4000|
+
+This is the number of energy grid points when calculating DOS, the default is 1500. This grid is within the window [$E_{min}$, $E_{max}$], and the $E_{min}$, $E_{max}$ are determined by the minimum and maximum eigen energies.
+
+### DOS\_GAUSSIAN\_BROADENING
+
+|Tag|DOS\_GAUSSIAN\_BROADENING|
+| --- | --- |
+|**Format**|DOS\_GAUSSIAN\_BROADENING = value|
+|**Default**|DOS\_GAUSSIAN\_BROADENING = 0.05|
+
+This is the gaussian broadening of DOS plot for JOB=DOS, unit is eV.
+
+### RELAX\_DETAIL
+
+|Tag|RELAX\_DETAIL|
+| --- | --- |
+|**Format**|RELAX\_DETAIL = IMTH, NSTEP, FORCE\_TOL, ISTRESS, TOL\_STRESS, TOL\_LINECORRECTION|
+|**Default**|RELAX\_DETAIL = 1, 200, 0.02, 0, 0, -0.001 (ACCURACY = NORM)|
+||RELAX\_DETAIL = 1, 200, 0.01, 0, 0, -0.001 (ACCURACY = HIGH / VERYHIGH)|
+||RELAX\_DETAIL = 1, 200, 0.03, 0, 0, -0.001 (XCFUNCTIONAL = HSE)|
+
+This is an optional line for ``JOB = RELAX''. It controls the atomic relaxation steps. Note PWmat1.5+ can relax the lattice vectors.
+
+**IMTH**, the method of relaxation. The default is 1, conjugated gradient. Other options include 2, BFGS method, 3, steepest decent (this is mostly for JOB=NEB), 4, Preconditioned Conjugate Gradient (PCG), experimental feature, See \ref{tag:vffdetail} before you use this, 5, Limited-memory BFGS method, 6, FIRE: Fast Inertial Relaxation Engine.
+
+Please note that: all imths (1,2,3,4,5,6) can be used for atomic relaxation,  but only imth=1,5,6 can be used for cell relaxation. In addition, some options can be set for the optimizers in file IN.RELAXOPT(need to set IN.RELAXOPT=T in etot.input), see section \ref{otherinput:in.relaxopt} for more details.
+
+**NSTEP**, the maximum number of relaxation steps. Each total energy calculation is one step, i.e., it counts the steps inside the line minimization in the total steps. In another word, NSTEP is more (at least twice) than the CG steps.
+
+**FORCE\_TOL**, the force tolerance for the maximal residual force. If the maximum force is less than FORCE\_TOL, the relaxation will stop.
+
+**ISTRESS**, controls whether to relax the lattice vectors. If ISTRESS=0 (or the last two number do not exist), the lattice will not be relaxed. If ISTRESS=1, PWmat will relax lattice vectors. One can add external stress tensor by setting STRESS\_EXTERNAL or PTENSOR\_EXTERNAL in file atom.config, and external pressure by setting PSTRESS\_EXTERNAL in file IN.RELAXOPT, the latter need to set IN.RELAXOPT=T in etot.input.
+    
+If you have set STRESS\_EXTERNAL or PTENSOR\_EXTERNAL, make sure the settings are consistent with sysmetry operations you have used (IN.SYMM=T) or generated by MP\_N123, if not you should turn off the symmetry operations. Check MP\_N123 for details about symmetry.
+
+If ISTRESS=1 and XCFUNCTIONAL=HSE, one should set RELAX\_HSE as follows:
+
+```bash
+    RELAX\_HSE = 0   0.0 2
+```
+    
+Basic settings for cell relax with xcfunctional=pbe :
+
+```bash
+    JOB = RELAX
+    XCFUNCTIONAL = PBE
+    RELAX_DETAIL = 1 1000 0.02 1 0.05
+    ECUT = 70 # maybe 1.4 * Ecut_default
+    ECUT2 = 280
+```
+
+Basic settings for cell relax with xcfunctional=hse
+
+```bash
+    JOB = RELAX
+    XCFUNCTIONAL = HSE
+    RELAX_DETAIL = 1 1000 0.03 1 0.05
+    ECUT = 70 # maybe 1.4 * Ecut_default
+    ECUT2 = 280
+    RELAX_HSE    =    0   0.50000E-01     2
+```
+
+**TOL\_STRESS**, the stress tolerance for the maximal residual stress. (here it is defined as $\partial{Etot}/\partial{STRAIN}/Natom$, Etot is the energy of the whole system (not the energy of unit volume)).
+
+**TOL\_LINECORRECTION**, the energy tolerance for the line minimization alone one search direction. When we see Etot(step) becomes a linear line, perhaps we should use a smaller value to have more correction steps.  However, for more accurate relaxations, we can set a smaller value for this parameter, so the relaxation can continue. We can turn off the energy tolerance checking for the line minimization by setting TOL\_LINECORRECTION < 0. Some time energy is not that much accurate, the energy tolerance checking is not reliable. And the default value is -0.001.
+
+The JOB = RELAX will output a RELAXSTEPS and MOVEMENT files. While RELAXSTEPS gives a summary of the steps, MOVEMENT records the atomic positions and lattice vectors for all the steps.
+
+**SPECIAL FORCE ON EACH ATOM**:
+In the RELAX calculation, one can add atom specified external force on each atom. This is done by using IN.EXT\_FORCE=T in etot.input. In that case, A file called IN.EXT\_FORCE needs to be provided, it will give the external force on each atom during the atomic relaxation. Please see the section IN.EXT\_FORCE for more details.
+
+**SOME DISCUSSION ABOUT RELAXATION**:
+
+Atomic relaxation is one of the most used feature in DFT calculations. One has to balance the speed with the stability. Here, we have implemented 6 different methods. For most common problem, we suggest to use imth=1 (conjugate gradient,CG).
+
+For very large system, to accelerate the convergence, one can test the use of imth=4, which is the VFF accelerated relaxation. In the best case (e.g., very large systems), imth=4 can speed up imth=1 by a factor of 10. However, one might want to test its stability. One can also used imth=4 (the BFGS method), sometime it is faster than the CG method. Another new method is imth=6, it uses a molecular dynamics but with a friction term, so the system will eventually relax to a local minimum. This can be stable, but one needs to test the parameter FIRE\_DT in IN.RELAXOPT. 
+
+Lastely, if all these methods are unstable,  one can always use imth=3, and use a very small maximum step by setting RELAX\_MAXMOVE in IN.RELAXOPT. This might take a long time, but it should be stable if sufficient small RELAX\_MAXMOVE is used.
+
+When doing atomic relaxation, one must be mindful of the egghead problem, which is the artificial forces caused by the real space lattice. One can remove this problem by setting Ecut2=4Ecut, and Ecut2L=4Ecut2. Most likely, the second condition Ecut2L=4Ecut2 might not be necessary, or one can use JOB=EGGFIT and EGG\_DETAIL to remove the egghead effect without using Ecut2L=4Ecut2. Unfortunately, one might always need to use Ecut2=4Ecut.
+
+To check the relaxation convergence, one should always check the energy as a function of iteration steps in RELAXSTEPS. Note, that, some steps might be trial steps, so they are not so important (you might see some spike). The important one is the "NEW" step energy.
+
+If funcitonal=HSE is used for atomic relaxation, some special algorithms are used for its acceleration. Please check RELAX\_HSE for details.
+
+Finally, if cell lattices are relaxed, great care must be taken. During the lattice relaxation, the number of plane wave basis (the G-vectors within the Ecut sphere) is not changed. So, at the end of the relaxation, the plane wave set (it  might no longer be a sphere) might not correspond to the Ecut sphere. So, if one uses the Ecut to run it again, a new plane wave set based on the Ecut sphere will be chosen, and the energy and the stress might be changed. So, either one needs to do this multiple times, or one needs to use a rather large Ecut, so the change of basis will have minimum effect. One can use the STRESS\_CORR to mitigate (compensate) this problem in some degree, but cannot really remove it completely. This will be particularly problematic if the volume change is very large. In some cases, it might be more reliable to do the cell relaxation by hand, specially if only one degree of freedom is used. Note, one can use stress\_mask in the atom.config to choose what lattice components can be changed. One can also used imov in atom.config to determine which atom, and which x,y,z direction can be moved for internal atomic relaxation.
+
+### RELAX\_HSE
+
+|Tag|RELAX\_HSE|
+| --- | --- |
+|**Format**|RELAX\_HSE = NUM\_LDA, FACT\_HSELDA, LDA\_PBE|
+|**Default**|RELAX\_HSE = 20, 0.05, 2|
+
+This is an optional line for ``JOB = RELAX'' when XCFUNTIONAL=HSE. It uses special techniques to accelerate the atomic relaxation under HSE. Currently, this option only works for conjugated gradient atomic relaxation as defined in {RELAX\_DETAILS}. In this option, the additional LDA or PBE atomic relaxations are used as preconditioner for the HSE relaxation.
+
+**NUM\_LDA** is the maximum number of relaxation steps for the LDA/PBE preconditioner run. It uses the LDA/PBE atomic relaxation as a preconditioner for the HSE atomic relaxation.  If {NUM\_LDA=0}, then no precondition is used, it is the plain CG atomic relaxation based on HSE. The default is 20.
+
+**FACT\_HSELDA** is the prefactor to stop the LDA/PBE relaxation: if LDA/PBE force is less than FACT\_HSELDA multiplied the HSE force, then stop. The default is 0.05.
+
+**LDA\_PBE** is the indicator for LDA or PBE functional used for the atomic relaxation to find the preconditioner of HSE relaxation. If LDA\_PBE=1, use LDA; LDA\_PBE=2, use PBE. One should use the xcfunctional which is closest to HSE. The default value is 2.
+
+Comments: before one use this option (NUM\_LDA $>$0), one better make sure the PBE, or LDA atomic relaxation of the system is smooth. So, one might want to use Ecut2=4*Ecut.
+
+### VFF\_DETAIL
+
+|Tag|VFF\_DETAIL|
+| --- | --- |
+|**Format**|VFF\_DETAIL = FF\_IMTH, FF\_NSTEP, FF\_FORCE\_TOL, K\_BOND, K\_ANGLE, K\_DIHEDRAL, K\_SHIFT|
+|**Default**|VFF\_DETAIL = 1, 500, 0.01, 30.0, 5.0, 0.0, 1.5|
+
+Note, if you want to use PCG(IMTH=4) method to accelerate the relaxation, you should know some basic concepts about force field theory. The PCG method supports any systems such as molecular, metallic, semiconductor and it has a well optimized energy function to the metallic systems like Al, Ni, Au, Cu, Ag, Pt, Ir, Pd, Rh, La, Ce, Mg, Ca, Sr. This method has a high stability for molecular systems, semiconductors and gives high speedup factors for molecule absorbed on surface cases.
+
+**FF\_IMTH**: the optimization algorithm used in force field relaxation.
+
+**FF\_NSTEP**: the maximum optimized steps in force field relaxation.
+
+**FF\_FORCE\_TOL**: the tolerance of force in force field relaxation.
+
+**K\_BOND, K\_ANGLE, K\_DIHEDRAL, K\_SHIFT**: the force constant for bond, angle, dihedral, shift terms.
+$$
+        E_{tot} = k_b(b-b_0)^2 + k_a(\theta-\theta_0)^2 + k_d(\phi-\phi_0)^2 + k_s(r-r_0)^2
+        $$
+
+The defaults is \textbf{VFF\_DETAIL = 1, 500, 0.01, 30.0, 5.0, 0.0, 1.5}. Note, it is not recommended to modify these parameters unless you are an expert on force field. If there is a metallic area in your system, that is, some metallic atoms have only metallic atoms neighbors and only metallic bond, you have to set additional parameters in the `atom.config' file like this:
+```bash
+29    0.22    0.11    0.06   1  1  1  1  1
+ 1    0.44    0.49    0.39   1  1  1  1  0
+```
+Here the Copper atom(Z=29) has five integers after coordinates, first three integers determine whether the atom will move along particular direction, the forth integer number has some meaning for DOS calculation and the last integer number (the ninth column) determine whether the atom is in the metallic area. As we know, the hydrogen atom is not a metallic atom, we set the last integer as 0, while Copper is metallic, so we have set it to 1. Note, you can set Copper to 0, so it will be dealt as a covalent bond element. Usually we only set it to 1 when there is a large piece of metal.
+
+### MD\_DETAIL
+
+|Tag|MD\_DETAIL|
+| --- | --- |
+|**Format**|MD\_DETAIL = MD, MSTEP, DT, TEMP1, TEMP2|
+|**Default**|None|
+
+This line is required when JOB=MD, or JOB=TDDFT, or JOB=NAMD. There is no default values, hence must be input by hand.
+
+**MD** : the method of MD algorithm
+
+|MD|Method|
+| --- | --- |
+|1|Verlet (NVE)|
+|2|Nose-Hoover (NVT)|
+|3|Langevin (NVT)|
+|4|Constant pressure Langevin dynamics (NPT)|
+|5|Constant pressure Nose-Hoover dynamics (NPT)|
+|6|Berendsen dynamics (NVT)|
+|7|Constant pressure Berendsen dynamics (NPT)|
+|8|Multi-Scale Shock Technique (MSST)|
+|11|Verlet (NVE), continue run|
+|22|Nose-Hoover (NVT), continue run|
+|33|Langevin (NVT), continue run|
+|44|Constant pressure Langevin dynamics (NPT), continue run|
+|55|Constant pressure Nose-Hoover dynamics (NPT), continue run|
+|66|Berendsen dynamics (NVT), continue run|
+|77|Constant pressure Berendsen dynamics (NPT), continue run|
+|88|Multi-Scale Shock Technique (MSST), continue run|
+|100|Calculating multiple configurations stored in IN.MOVEMENT|
+|101|Calculating multiple configurations stored in IN.MOVEMENT|
+
+
+Verlet is for NVE (fixed number of atom N, fixed volume V, and fixed total energy E), Langevin and Nose-Hoover are for NVT (fixed number of atom N, fixed volume, and fixed temperature T), and Constant pressure Langevin or Nose-Hoover dynamics are for NPT (fixed number of atom N, fixed pressure P, and fixed temperature T). Currently, we do not have NPE. We also provide MSST (Multi-Scale Shock Technique) to simulate a compressive shock wave passing over the system.
+
+One can also set: MD=11,22,33,44,55,66,77,88 which means the continue run of MD following the previous runs.
+
+**MSTEP** : the number of MD steps.
+
+**DT** : the time length for each MD step (in the unit of $fs$, $1fs =1\times10^{-15}s$). Note, usually, with H atoms, dt should be $1fs$, and with heavier atoms, dt could be $2fs$. However, for rt-TDDFT run, dt should be much smaller, like 0.1 fs to 0.2 fs.
+
+**TEMP1** and **TEMP2** : the beginning and final temperature (in $Kelvin$). When there is no velocity session in the atom.config file, the TEMP1 will be used to randomly generated an initial velocity (the initial kinetic energy is generated as twice the 0.5*K*T, with the expectation that half of its energy will be converted into potential energy). So, in the simulation, the istep=1 temperature will be 2*TEMP1.
+
+TEMP2 will not be used for MD=1, or 11 (NVE) (but still, it should be there as a place holder). During the MD, the program will adjust the temperature linearly, let it goes from TEMP1 to TEMP2. For MD=3,5 (Langevin), one can use a LANGEVIN\_ATOMFACT\_TG section in the atom.config file to specify a local atomic specified temperature (and Langevin parameter gamma). In that case, the desired atomic temperature at a given time equals the global desired temperature calculated from TEMP1 to TEMP2, then multiplied by the atomic scaling factor specified in the LANGEVIN\_ATOMFACT\_TG.
+
+For method 1-8, one can use file IN.MDOPT to set detailed parameters by setting IN.MDOPT=T, all the parameters will be written in file OUT.MDOPT. Please refer to section \ref{otherinput:in.mdopt} for details.
+
+In the Berendsen method (MD=6,7,66,77), the kinetic energy is scaled at every MD step as (1+(Tdesired/Tcurrent-1)*dt/tau). For MD=7,77 (NPT), the cell box is scaled at every MD step as:
+
+$$
+cell(i1,i2) = cell(i1,i2) * ( 1+(press(i1,i2) - press\_ext(i1,i2)) * stress\_mask(i1,i2) * dt / tauP ).
+$$
+
+Here press, press\_ext are pressures in the unit of $eV/Angstrom^3$. Note, press(3,3) equals the stress(3,3)/volume, so it is a 3x3 tensor. The external pressure $press\_ext(i,j)=delta\_{i,j} MD\_NPT\_PEXT\_XYZ(i)$ . Note, this is input from IN.MDOPT, not the stress from the atom.config. If MD\_NPT\_PEXT\_XYZ is not specified, then MD\_NPT\_PEXT\_XYZ(:) = MD\_NPT\_PEXT. If both MD\_NPT\_PEXT\_XYZ and MD\_NPT\_PEXT are not speficied, then the external pressure is zero. The stress\_mask is from atom.config. The detault value is stress\_mask(i1,i2)=1 (for every element of the matrix).
+
+One can always set MD\_SEED and MD\_AVET\_TIMEINTERVAL. For MD=4 or 5, one can check the internal pressure in file MDSTEPS and MOVEMENT.
+
+In the MSST method(MD=8,88), you always need to set MD\_TAU\_CELL, MD\_MSST\_VS, MD\_MSST\_DIR. MD\_TAU\_CELL will set the masslike parameter for the simulation cell size, i.e. Q in paper \cite{Reed}, but MD\_TAU\_CELL itself is the time to arrive equilibrium. MD\_MSST\_VS is the shock speed $v_s$ in paper \cite{Reed}. MD\_MSST\_DIR is the shock direction, its value can be 0, 1 or 2 for in x, y or z direction. IN file MOVEMENTS you can check MD\_MSST\_INFO for additional outputs. IN file MDSTEPS there adds a new column "V/V0", which shows the change of vulome. In the process of MSST, if MD\_MSST\_VS is kind of large in some way and the size of box changes alot, PWmat will hard to converge or evan crash. You need to reduce the time step, i.e. use smaller DT in MD\_DETAIL.
+
+When MD=11/22/33/44/55/66/77/88, it is a continue run for Verlet/Langevin/Nose-Hoover constant pressure, Langevin/constant pressure Nose-HooverNPT, Berendsen NVT, Berendsen NPT respectively. In these cases, the atom.config file should include the velocity section. Note, for JOB=MD, if there is velocity section in atom.config, the velocity will be used, and there is no initial scaling of the velocity using temperature TEMP1.
+
+**SPECIAL LV**:  There is a special feature for LV dynamics (either 3 or 4). In this special feature, we can specify the desired temperature for each atom. We can also specify the desired GAMMA value (the MD\_LV\_GAMMA) for each atom. In another words, you can make one atom very hot, and let the temperature decaying from this atom. The temperatue decaying length will be controlled by the MD\_LV\_GAMMA. Smaller this value, decaying length will be longer, i.e., more graduate. The atom specific temperature and Gamma are controlled by scaling factors, they are specified in the atom.config file, with a special session called: "LANGEVIN\_ATOMFACT\_TG". They have the following formats (see section \ref{inputfile:atomconfig}):
+
+```bash
+LANGEVIN_ATOMFACT_TG
+30  0.5   1.0
+30  0.2   1.2
+..............
+atom scaleT  scaleG
+
+```
+
+Here the desired temperature for one atom equals the original desired temperature specified by temp1, temp2 and the steps, then multiplied by scaleT(iatom). The Gamma for one atom equals the MD\_LV\_GAMMA specified in the above table, or its default value, multipled by scaleG(iatom).
+
+**SPECIAL FORCE**: In all the MD calculation, one can add atom specified external force on each atom. This is done by using IN.EXT\_FORCE=T in etot.input. In that case, A file called IN.EXT\_FORCE needs to be provided, it will give the external force on each atom during the molecular dynamics, or during atomic relaxation. Please see the section IN.EXT\_FORCE for more details.
+
+
+**MD=100,101**: for these choices, instead of doing an actual MD simulation following the atomic forces, the multiple configurations stored in a file IN.MOVEMENT will be calculated one after another, so the forces will not really be used, and the trajectory follows the one in IN.MOVEMENT. Note, in the running directory, a IN.MOVEMENT file need to be provided. This is mostly used for some special purposes, for example for machine learning force field development, while the IN.MOVEMENT is generated by force field. For MD=101, the charge and wave function interpolation is turned off. This might be useful if the configures in IN.MOVEMENT change dramatically from one frame to another frame. While the format in IN.MOVEMENT is the same as in the output MOVEMENT, it must provide a header.
+
+The formate of IN.MOVEMENT, 
+
+```bash
+nstep,nskip1,nskip2,nkip3,njump
+64, atoms,Iteration .....
+...
+Lattice vector (Angstrom)
+0.1130000000E+02    0.0000000000E+00    0.0000000000E+00
+0.0000000000E+00    0.1130000000E+02    0.0000000000E+00
+0.0000000000E+00    0.0000000000E+00    0.1130000000E+02
+Position (normalized), move_x, move_y, move_z
+31         0.99973    0.99973    0.99973     1  1  1
+31         0.99985    0.24985    0.24985     1  1  1
+.......
+.......
+```
+
+The code used to read the IN.MOVEMENT file is as following,
+
+```fortran
+do istep=1,nstep
+do ii=1,njump
+do i=1,nskip1
+read(IN.MOVEMENT,*)
+enddo
+read(IN.MOVEMENT,*) AL(1,1),AL(2,1),AL(3,1)
+read(IN.MOVEMENT,*) AL(1,1),AL(2,1),AL(3,1)
+read(IN.MOVEMENT,*) AL(1,1),AL(2,1),AL(3,1)
+do i=1,nskip2
+read(IN.MOVEMENT,*)
+enddo
+do i=1,natom
+read(IN.MOVEMENT,*) iat(i),x1(i),x2(i),x3(i)
+enddo
+do i=1,nskip3
+read(IN.MOVEMENT,*)
+enddo
+enddo ! ii=1,njump
+enddo ! istep=1,nstep
+```
+
+The nskipt1,nskipt2,nskip3 are the skips of lines in different segment of the IN.MOVEMENT file.
+The njump indicates whether you like to calculate every configuration (njump=1), or you like to
+jump over some configurations, e.g., njump>1. nstep is the total number of steps to calculate.
+You might need to check  the IN.MOVEMENT file to determine the nskip1,nskip2,nskip3. nskip2 is
+usually 1.
+
+### MD\_VV\_SCALE
+
+|Tag|MD\_VV\_SCALE|
+| --- | --- |
+|**Format**|MD\_VV\_SCALE = NSTEP|
+|**Default**|MD\_VV\_SCALE = 100|
+
+To scale the kinetic energy in Verlet MD (for JOB=MD, iMD=1/11) for every NSTEP steps, so the total energy is conserved. The default NSTEP is 100. This is used for enforce the total energy conservation for Verlet. Note, in TDDFT, NAMD, or some MD when there is external potential or electric field, the total energy is not supposed to be conserved. In those case, please set MD\_VV\_SCALE to a very large number, so it will never be used. The default value is MD\_VV\_SCALE=100 for MD, and not used for TDDFT and NAMD.
+
+### TDDFT\_DETAIL
+
+|Tag|TDDFT\_DETAIL|
+| --- | --- |
+|**Format**|TDDFT\_DETAIL = $m_1$, $m_2$, mstate|
+|**Default**|TDDFT\_DETAIL = 1, NUM\_BAND, NUM\_BAND|
+
+This will be read in when JOB = TDDFT. Note if mstate=-1, this is for TDDFT\_NOB calculation, see below.
+
+Note, when JOB=TDDFT, besides TDDFT\_DETAIL, it also reads in parameters from MD\_DETAIL, and optionally from TDDFT\_SPACE, TDDFT\_TIME, TDDFT\_STIME.
+
+In the TDDFT calculation, we expand the time dependent electron orbital $\psi_j(t)$ in terms of the adiabatic eigenstates $\phi_i(t)$.
+
+$$
+\psi_j(t)=\sum\limits_{i}C_{ji}\phi_i(t)
+$$
+
+There will be $mstate$ electron wavefunctions [j=1,mstate] which will be occupied by their occupation number o(j) and described by $\psi_j(t)$.
+
+However, for the first $m_1-1$ orbital ($j=1,m_1-1$), $\psi_j(t)$ is just $\phi_i(t)$, i.e., these $m_1$ states are fully occupied like in Born-Oppenheimer MD, no electron excitation:
+
+$$
+\psi_j(t)=\phi_j(t), j=1,m_1-1
+$$
+
+For the next $j=m_1, mstate$ state (so, mstate include the [1,$m_1-1$] state!), we will expand the $\psi_j(t)$ in the $\phi_i(t)$ window of $i=m_1,m_2$:
+
+$$
+\psi_j(t)=\sum_i C_{ji}(t)\phi_i(t), j=m1,mstate;i=m1,m2
+$$
+
+Thus, in total, the expansion window is [$m_1,m_2$], and the total number of time dependent orbital is: mstate (they will be occupied by o(j), so mstate can be larger than the NUM\_ELECTRON/IPSIN. However, within the mstate, the first $m_1-1$ states are fully occupied, and just equal to the adiabatic eigen states, the next $mstate-m_1$ state will be expanded using adiabatic state within the window of [$m_1,m_2$], and their occupation might follow the Fermi-Dirac rule, or to be input by IN.OCC/IN.OCC\_2 (see Appendix \ref{appendix:tddft}). The initial $C_{ji}$ can also be input from IN.CC/IN.CC\_2 (see Appendix \ref{appendix:tddft}).
+
+|||
+| --- | --- |
+|**[m1,m2]**|Adiabatic window $\phi_{i,i=m1,m2}$. The $[1,m1-1]$ will always be occupied by the first $\psi_{j,j=1,m1-1}$ states. $m2 \in [m1,NUM\_BAND]$ , usually $m2$ is smaller than $NUM\_BAND$ by a few states, because the last few states maybe not converge well.|
+|**[1,mstate]**|Wavefunction index. $\psi_{j,j=1,mstate}$. $mstate\in [m1,m2]$|
+
+The choice of m2 is important for the physical correctness of the TDDFT simulations. The choice might depend on the physical problems at hand. Larger the m2, more accurate will be the simulation, but it can also cost more time to calculate. Typically, from mstate to m2, one should include all the possible electron excitations. For example, for a light excitation, if the hot electron can be 1-2 eV above the bottom of conduction band, then m2 should be choosen to include all these bands. Sometime m2 can be twice as mstate. But tests are needed to determine this. All depend on how high the electron can be excited to the conduction band.
+
+If mstate=-1, this is a special case, for TDDFT\_NOB calculation. NOB stands for natural orbital branching. In this case, we need another line, which is:
+
+```bash
+TDDFT_NOB = iseed, S_c, tau, temp2, kin_scale, select_opt
+```
+
+iseed (negative integer) is a random number seed for the stochastic NOB calculation. S\_c is the cut-off entropy for the branching. tau is the dephasing time (in fs). If tau is negative, then IN.BOLTZMANN\_TAU will be used to input tau(i) for each state, and the tau$_{ij}$ will be determined from $\sqrt{tau(i)tau(j)}$. temp2 is the  temperature for the case of kin\_scale=2. kin\_scale=1,2,3 are three different ways for kinetic energy scaling after branching, similar to the flag\_scale=1,2,3 in the TDDFT\_BOLTZMANN flag.
+
+kin\_scale=1 will scale all the atom's velocity uniformly to conserve the total energy.
+
+kin\_scale=2 will scale all the atom's velocity uniformly to keep the temperature at temp2. As a result this method will not conserve the total energy, and the total energy will usually graduately decrease.
+
+kin\_scale=3 will be the standard way to scale the kinetic energy in the transition degree of freedom, and conserve the total energy.
+
+Select\_opt=1,2,3 is the option for branching algorithm.
+
+1: for using the transition eigen energy difference and the current temperature (derived from the current kinetic energy) with an Boltzmann factor to determine the natural orbital branching probability to restore the detailed balance.
+    
+2: for using the SCF total energy difference after a trial branching and the current temperature to determine the natural orbital branching probability.
+
+3: this will also use the actual SCF total energy, instead of eigen energies, to determine whether a branching is allowed. However, instead of using a temperature and an Boltzamn factor, in this scheme, the transition degree of freedom is first determines, and whether this degree of freedom has enough kinetic energy to compensate the SCF total energy increase, is used to determine whether one particular branching is allowed.  Note, for select\_opt=3, one must also choose kin\_scale=3.
+
+Note, kin\_scale=3, select\_opt=3 will be the standard way of doing statistical branching.
+
+### TDDFT\_SPACE
+
+|Tag|TDDFT\_SPACE|
+| --- | --- |
+|**Format**|TDDFT\_SPACE = itype\_space, N, a(1), ..., a(N)|
+|**Default**|TDDFT\_SPACE = 0|
+
+This controls the real space Vext\_tddft(r). Vext\_tddft(r) refers to the  external potential in real space for tddft calculation.
+
+|itype\_space|Description|
+| --- | --- |
+|0|No external input term.|
+|1|Read vext\_tddft from file IN.VEXT\_TDDFT(all capital, same format as in IN.VEXT).|
+|2|$Vext\_tddft(r)=(x-a(1))a(4)+(x-a(1))^2a(5)+(y-a(2))a(6)+(y-a(2))^2a(7)+(z-a(3))a(8)+(z-a(3))^2a(9)$, a(1),a(2),a(3) in fractional coordinates, a(4)-a(8) in unit of Hartree/Bohr. output file OUT.VEXT\_TDDFT.|
+|3|$Vext\_tddft(r)=a(4)e^{-[(x-a(1))^2+(y-a(2))^2+(z-a(3))^2]/a(5)^2}$, a(1),a(2),a(3) in fractional coordinates, a(4) in unit of Hartree, a(5) in unit of Bohr. output file OUT.VEXT\_TDDFT.|
+|-1|Not use real space format, but use G-space,it wil use IN.A\_FIELD|
+
+The `IN.VEXT\_TDDFT' file can be copied from other TDDFT calculation output file 'OUT.VEXT\_TDDFT', or generated by utility programs \hyperref[util:addfield]{add\_field.x}.
+
+### TDDFT\_TIME
+
+|Tag|TDDFT\_TIME|
+| --- | --- |
+|**Format**|TDDFT\_TIME = itype\_time, N, b(1), ..., b(N)|
+|**Default**|TDDFT\_TIME = 0|
+
+This is used to control the time dimension of the external function fTDDFT(i).
+
+|itype\_time|Description|
+| --- | --- |
+|0|$ftddft(t)=1.0$|
+|1|read in $ftddft(i)$ from IN.TDDFT\_TIME|
+|2|$ftddft(t)=b(1)e^{-(t-b(2))^2/b(3)^2)}\sin(b(4)t+b(5))$.  $b(2)$,$b(3)$ in unit of $fs$; $b(4)$ in unit of rad/fs unit, $b(5)$ in unit of rad; $b(1)$ no unit. output file OUT.TDDFT\_TIME|
+|22|$ftddft(t)=\int^t_0 [b(1)e^{-(t-b(2))^2/b(3)^2)}\sin(b(4)t+b(5))] dt$.  $b(2)$,$b(3)$ in unit of $fs$; $b(4)$ in unit of $rad/fs$, $b(5)$ in unit of rad; $b(1)$ no unit. output file OUT.TDDFT\_TIME|
+
+File IN.TDDFT\_TIME format,
+
+```bash
+0 ftddft(0)
+1 ftddft(1)
+...
+N ftddft(N)
+
+```
+
+For TDDFT Hamiltonian, we have,
+
+|Option|Description|
+| --- | --- |
+|$\ne -1$ |$H(t)=H_0+Vext\_tddft(r)ftddft(t)$|
+|-1|$H(t)=-1/2(\nabla_x+i A_x*ftddft(t))^2-1/2(\nabla_y+i A_y*ftddft(t))^2-1/2(\nabla_z+i A_z*ftddft(t))^2$|
