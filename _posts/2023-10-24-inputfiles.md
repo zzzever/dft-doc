@@ -1937,3 +1937,598 @@ For TDDFT Hamiltonian, we have,
 | --- | --- |
 |$\ne -1$ |$H(t)=H_0+Vext\_tddft(r)ftddft(t)$|
 |-1|$H(t)=-1/2(\nabla_x+i A_x*ftddft(t))^2-1/2(\nabla_y+i A_y*ftddft(t))^2-1/2(\nabla_z+i A_z*ftddft(t))^2$|
+
+### TDDFT\_BOLTZMANN
+
+|Tag|TDDFT\_BOLTZMANN|
+| --- | --- |
+|**Format**|TDDFT\_BOLTZMANN = flag\_b, flag\_scale, temp, tau, istep\_start(opt), nstep\_CG(opt)|
+|**Default**|TDDFT\_BOLTZMANN = 0|
+
+This line controls whether to introduce Boltzmann factor in order to keep the correct detailed balance between two adiabatic states $\phi_{i1}(t)$ and $\phi_{i2}(t)$. This goes beyond the usual Ehrenfest dynamics. In the Ehrenfest dynamics, the electronic system will be over heated due to the lack of detailed balance (which means the transition from the lower energy adiabatic state $\phi_{i1}(t)$ (with eigen energy $E_{i1}(t)$) to higher energy adiabatic state $\phi_{i2}(t)$ (with eigen energy $E_{i2}(t)$) is a factor of $exp(-(E_{i2}-E_{i1})/kT)$ smaller than the transition from $\phi_{i2}(t)$ to $\phi_{i1}(t)$. This suppression of the up-lifting transition can be realized by adding this Boltzmann factor. Adding this Boltzmann factor is critical in order to have the proper hot electron cooling. However, an dephasing time tau has to be used with an special algorithm when adding this Boltzmann factor, otherwise the cooling will be too fast (e.g., an energy conservation between the transition states and an phonon mode in the weak coupling regime will not be satisfied). A special algorithm is implemented in PWmat to properly take into account the tau. 
+
+In a way, this is like the Tully's surface hopping, but without the stochastic feature in the dynamics. Compared with Tully's algorithm, it has more correct dephasing behavior. Compared with wave function collapsing behavior, it can have more proper treatment for tau. However, this is a meanfield treatment for the nuclear trajectory. Unlike the stochastic potential energy surface hopping, or wave function collapsing treatment, the current meanfield treatment does not provide a branching for the trajectory (thus might not be good if you like to calculate the probability for  different chemical reaction, etc). The Boltzmann factor is not applied to each individual electron state $\psi_j(t)$ (and its collapsing), instead, it is applied to the occupation of adiabatic state $\phi_i(t)$ (collectively for all $\{ \psi_j(t) \}$),  as a result, it has a property of unitary rotational invariance among the group of $\psi_j(t)$.
+
+**flag\_b** : indicates whether to use the Boltzmann factor: 0 means no Boltzmann factor (Ehrenfest dynamics); 1 means with Boltzmann factor. Note, one has to detemine according to the physics, whether to use this Boltzmann factor. For example, if the dynamics does not involve phonon, and it is very short (e.g., using rt-TDDFT to simulate the light absorption), then one might not want to include the Boltzmann factor. One thing needs to be mindful: for long time rt-TDDFT simulations, the use of Boltzmann factor can make the simulation more stable, since all the states are moving towards equilibrium.
+
+**flag\_scale** : indicates what method to be used to scale the kinetic energy. When using the Boltzmann factor, the total energy will not be conserved without the rescaling of the velocity of the nuclei (usually, the total energy will decrease due to the electron cooling). There are different ways to deal with this. flag\_scale=0, this means without scaling the kinetic energy, as a result, the total energy will decrease with time. flag\_scale=1, this means the velocities of all the nuclei will be rescaled with a uniform scaling factor, so the total energy will be an constant (thus the lost electronic energy will be given to the phonon movement). For example, this will be useful for isolated molecule. In this case, if there is an initial hot electron, the temperature of the system will likely increase with time. Note, the Boltzmann factor $exp(-(E_{i2}-E_{i1})/kT)$ dynamically depends on this temperature T(t). flag\_scale=2,this means the velocities of all the nuclear will be scaled to keep the temperature (the total kinetic energy) to a constant, specified by $temp$. In this case, the temperature in the $MD\_DETAIL$ will not be used, but the $temp$ specified here will be used. This might be a good approximation if the studied system is embedded in a thermal bath, which is always kept in a constant temperature. flag\_scale=3, this is like $flag\_scale=1$, where the kinetic energy is modified to keep the total energy conserved. However, instead of uniformly scale the velocity of all the atoms by a constant factor, here the electron-phonon coupling constant is used to specify a force of a given atom, which is then used to be added to the current velocity to conserve the total energy. This is more rigorous treatment for what phonon degree of freedom to give the extra kinetic energy for. More specifically, let's use TCD(i1,i2) to indicate the Boltzmann factor introduced  modification of the density matrix, which represents the charge transfer between adiabatic states i1 and i2 (this modification maintains the detailed balance between adiabatic states i1 and i2, but also cause the violation of energy conservation).
+
+We also define $D(i1,i2)=\sum_j C*(i1,j) C(i2,j) o(j)$, here C(i,j) is the expansion coefficient of electron wave function $\psi_j(t)$ on adiabatic state $\phi_i(t)$, i.e, $\psi_j(t)=\sum_i C(i,j) \phi_i(t)$, and o(j) is the occupation (not change with time) of electron state $\psi_j(t)$. Then the extra atomic force due to the TCD(i1,i2) between adiabatic states $\phi_{i1}(t)$ and $\phi_{i2}(t)$ will be: $F(R)= \sum_{i1,i2} TCD(i1,i2) D(i1,i2)/abs(D(i1,i2) <\phi_{i1}|\partial H/\partial R|\phi_{i2}>$, here R is the nuclear coordination. Then to conserve the total energy we have used: $V(R)=V(R)+ x F(R)/m(R)$, here m(R) is the nuclear mass, and x is chosen for the smallest value which satisfies the total energy conservation. This x is reported in the screen output of PWmat in the line: "TDDFT,boltzmann,kin:istep,x,dE,a*x**2+b*x+c=0", together with dE(eV), which is the energy drop due to the Boltzmann factor. The a*x**2+b*x+c=0 is the equation used to solve for x.
+
+**temp**: the fixed temperature when $flag\_scale=2$. Note, the temp1,temp2 in the MD\_DETAIL line will not be used for rt-TDDFT simulation (except the temp1 is used to set an initial velocity of the system). We provide this temp here, to distinguish the temp1 for the initial velocity and the temperature you want to use in the Boltzmann factor.
+
+**tau**: the dephasing time (in fs unit) for all the adiabatic state transitions. If tau=-1 (negative), then one needs to provide an file $IN.BOLTZMANN\_TAU$, which specifies the tau for different states as described below.
+
+**IN.BOLTZMANN\_TAU**: the tau input file when tau < 0 in above. This is recommended for the stability of the TDDFT algorithm. It has the following format:
+
+```bash
+    tau($m_1$), tau($m_1$+1),tau($m_1$+2),....., tau($m_2$).
+```
+
+There should be $m_2-m_1+1$ numbers in a single line, here the $m_1$ and $m_2$ are the first and last adiabatic state index specified in the $TDDFT\_DETAIL$ line. Note, all the numbers are in fs unit. Also note that, for an adiabatic pair i1 and i2 transition, the actual tau for this tau(i1,i2) is sqrt(tau(i1)*tau(i2)). It is recommended that for the few highest adiabatic states in the adiabatic state window [$m_1$,$m_2$], use very small tau. E.g., for the last few tau close to $m_2$, use 0.0001fs. This will make sure these adiabatic states will not have large amplitude $C(i,j)$, which will help the convergence of the TDDFT algorithm.
+
+There are actually more rigorous formulas to calculate tau(i1,i2) from their eigen energies time dependence:
+
+    $$\tau_{i,j}=2 kT  [<|\partial \epsilon_i(t)/\partial t -\partial \epsilon_j(t)/\partial t|^2>_{ave}]^{-1/2} $$
+
+here $\epsilon_i(t)$ is the eigen energy of adiabatic state $\phi_i(t)$ and the $<>_{ave}$ means for a time average. However, in our simulation, we did not calculate this $\tau_{i,j}$, although one can use the above formulat to estimate the decoherent time between a given pair of adiabatic states.
+
+**istep\_start (optional)**: This is an optional value, to indicate from which TDDFT MD step it begins to use the Boltzmann method. If not input, the default value is 1. One can use this parameter to delay the deployment of Boltzmann method, in order to make the algorithm more stable, or for other purposes. One reason is that, for the first 1 or 2 steps, it is possible the TDDFT step itself is not converged. If the SCF TDDFT is not converged, it might appear to be there are large rotations between different eigen states, then that can introduce large Boltzmann correction, and it is wrong, and make can the algorithm unstable. In that case, one can set istep\_start to be 3 or 5, to make the algorithm more stable. Of course, one can also use this to investigate different physics.
+
+**nstep\_CG (optional)**: This is an optional parameter to control the number of steps in an internal conjugate gradient linear solver. Note, to input this parameter, one has to have the istep\_start paremeter before nstep\_CG. The default value of nstep\_CG is 1000. However, for large systems, the solution of a linear equation can significantly slow down the calculation. One can test the use of nstep\_CG=500, or 250 to speed up this step.
+
+### NAMD\_DETAIL
+
+|Tag|NAMD\_DETAIL|
+| --- | --- |
+|**Format**|NAMD\_DETAIL = $m_1$, $m_2$, nstep\_out|
+||NAMD\_DETAIL = $m_1$, $m_2$, nstep\_out, icycle, nstep\_cycle, icrossk, hc|
+|**Default**|None|
+
+This line is needed (either the first format, or the second format) when JOB=NAMD.
+
+Note, when JOB=NAMD, besides NAMD\_DETAIL, it also reads in parameters from MD\_DETAIL, and other possible options from TDDFT\_SPACE, TDDFT\_TIME, TDDFT\_STIME, NAMD\_SPECIAL.
+
+In the NAMD calculation, it performs an conventional Born-Oppenheimer MD, but outputs the wave function overlap between consecutive time steps for the adiabatic eigenstates within the window $[m_1,m_2]$. It uses the MD parameters from MD\_DETAIL. The output is written in OUT.NAMD, and will be used in post-process programs like "namd\_dm.x" in \href{http://www.pwmat.com/module-download}{Boltzman-NAMD}, to carry out non-adiabatic MD simulation for carrier dynamics. The carrier wave function $\psi(t)$ will be described by the adiabatic eigen states set within the window $[m_1,m_2]$:
+
+$$
+    \psi(t)=\sum_i C_{i}(t)\phi_i(t), i=m1,m2
+$$
+
+Note, inside OUT.NAMD (which is an unformatted file), it has the following write-out format:
+
+```fortran
+write(10) istep0,islda,nkpt,time,mst_win
+do iislda=1,islda
+do kpt=1,nkpt
+write(10) kpt,iislda,mst_win
+write(10) eigen(1:mx,kpt,iislda)
+enddo
+enddo
+do istep=1,nstep
+write(10) istep,islda,nkpt,time,mst_win
+do iislda=1,islda
+do kpt=1,nkpt
+write(10) kpt,iislda,mst_win
+write(10) hh(1:mst_win,1:mst_win,kpt,iislda)
+write(10) eigen(1:mx,kpt,iislda)
+enddo
+enddo
+enddo
+```
+
+The first step is different from the rest of the steps. mx is the number of bands calculated,
+while $mst\_win=m_2-m_1+1$ is the window of the NAMD output. Eigen is the eigen energy in atomic
+unit (Hartree). $hh(m1,m2,kpt,iislda)= <\psi_{m1}^*(istep-1)|\psi_{m2}(istep)>$ for this kpoint and spin iislda.
+
+There are also more advanced options (the second line form). There icrossk=0 or 1: 0, no action for this, 1, output the kpoint cross product in another file: OUT.NAMD\_CROSSK. This is only useful if
+multiple kpoints are used. This file has the following format:
+
+
+```fortran
+write(10) istep0,islda,nkpt,time,mst_win
+do iislda=1,islda
+do kpt=1,nkpt
+write(10) kpt,iislda,mst_win
+write(10) eigen(1:mx,kpt,iislda)
+enddo
+enddo
+do istep=1,nstep
+write(10) istep,islda,nkpt,time,mst_win
+do iislda=1,islda
+do kpt=1,nkpt
+write(10) kpt,iislda,mst_win
+write(10) hh2(1:mst_win,1:mst_win,1:nkpt,kpt,iislda)
+write(10) eigen(1:mx,kpt,iislda)
+enddo
+enddo
+enddo
+```
+
+The only difference is that, in OUT.NAMD, each time step we have: hh(m1,m2), here we have $hh2(m1,m2,kpt2,kpt,iislda)= <u^*(m1,kpt,istep-1)|u'(m2,kpt2,istep>$, so you have cross kpoint dot-product. Note, u is the Bloch part of the wave function, so the cross-k point dot product is not zero. For kpt2.eq.kpt, u' is just the u. But if kpt2.ne.kpt, then u'(istep) has been project out the component of the u(istep-1) in the following way:
+
+    $$u'(m_2,kpt_2,istep)= u(m_2,kpt_2,istep)-\sum_{m_3} h(m_3,m_2,kpt_2)* $$
+    $$ [1- exp(-(|h(m_3,m_2,kpt_2)|^4/hc^2)] u(m_3,kpt_2,istep-1)$$
+
+here $h(m_3,m_2,kpt_2)=<u^*(m_3,kpt_2,istep-1)|u(m_2,kpt_2,istep>$. Everything is done within the same iislda.
+  
+The above output can be used for a special algorithm for postprocess NAMD calculations allowing the hot carrier to jump k-points. One can take $hc$ to be about 0.1, for time step 1fs MD. For better result, one can reduce the time step, while further decrease $hc$.
+
+Another special option is the icycle option. If icycle=0, no action will be taken. If icycle=1, then the program will try to make the MD periodic in time. Note, for this scheme, one cannot restart the MD. So, iMD must equal to 1, not 11, etc. The nstep\_cycle is the buffer region. One possibility, for example, is MDstep=1000 (or 2000), nstep\_cycle=200. The idea is that, the code will make the last step (istep=MDstep) the same (in both atomic position and velocity) as the nstep\_cycle step (note, not the first step). Hence the MD will do a time cycle with a periodicity of MDstep-nstep\_cycle. In the NAMD post-process, this can be used to carry out the NAMD forever, while the nuclear movement has a periodicity of MDstep-nstep\_cycle steps. Note, ath the MDstep-th step, the adiabatic wave function has used the same one as that for the nstep\_cycle-th step. This allows the NAMD calculations to continue forever.
+
+Note, it must be critical to check the potential and kinetic energy in MDSTEPS file, make sure the transition period is smooth. It is critical, for this to work, the whole system from beginning to the end should not drift away. Instead, most atom should only have vibrations (e.g., as in a crystal system).
+
+The nstep\_out is the number of steps interval to output the wave functions (within the window $[m_1,m_2]$) into the ugio.allxxxxxx file. Note, this could be large files, so you probably don't want to output the wave function at every step (e.g., nstep\_out=1). However, sometime the output wave functions can be used to do some postprocessing, which are not done during the NAMD simulation. For example, the wave functions can be used to introduce some additional term $\delta H$, so you have $<\phi_i(t)|\delta H|\phi_j(t)>$ during the postprocess steps. In order to do this, you still don't need to output $\phi_i(t)$ at every time step, because the code does output the overlap $S_{ij}=<\phi_i(t)|\phi_j(t+dt)>$ between consecutive steps, so you can use the $S_{ij}$ to link the adiabatic states at different time. Nevertheless, you might still want to use a relatively small nstep\_out for this regard. As a balance, we found that nstep\_out=50 might be a good choice for many problems. But be prepared for a lot of files!
+
+For more information, please see APPENDIX B.
+
+### NEB\_DETAIL
+
+|Tag|NEB\_DETAIL|
+| --- | --- |
+|**Format**|NEB\_DETAIL = IMTH, NSTEP, FORCE\_TOL, NIMAGE, AK, TYPE\_SPRING, $E_0$, $E_N$, ITYPE\_AT2, ATOM2.CONFIG|
+|**Default**|None|
+
+The NEB\_DETAIL line is needed when JOB=NEB.
+
+For the NEB algorithm, please refer to Ref.\cite{NEB}. In the NEB run, NIMAGE+2 atomic configurations are used, the NIMAGE intermediate configurations connect the initial configuration (in ATOM.CONFIG) with the final configuration (in ATOM2.CONFIG). This is also called the string. During the NEB run, the NIMAGE intermediate configurations will be relaxed together, almost like a NIMAGE*natom atom large system. However, during the atomic relaxation, the atomic force component along the string will be removed (hence not be minimized), so this is call the nudged elastic band method. The goal is to have the force perpendicular to the string to be zero (the string will be moved during the relaxation), while leave alone the atomic force component along the string, meanwhile hopefully keep the distance roughly equal among the NIMAGE+2 image points. Larger the NIMAGE, more difficult is the calculation. For simple problems, typically NIMAGE can be about 5. The output of NEB is written in RELAXSTEPS, and MOVEMENT.
+
+**IMTH**: the algorithm used for atomic relaxation.
+
+|IMTH|Description|
+| --- | --- |
+|1|conjugate gradient|
+|2|BFGS|
+|3|steepest decent|
+|4|VFF preconditioned conjugate gradient|
+|5|Limited-memory BFGS|
+|6|FIRE: Fast Inertial Relaxation Engine|
+
+For NEB calculation, IMTH=5 and 6 are recommended for good convergency. Some options can be set for the optimizers in the optional file IN.RELAXOPT(need to set IN.RELAXOPT=T in etot.input). The IN.RELAXOPT is as follows:
+```bash
+RELAX\_MAXMOVE = 1.0
+\verb"    "! max move distance. unit bohr -- for method=1,5,6.
+LBFGS\_MEMORY = 30 
+\verb"    "! LBFGS storage size -- for method=5. 
+FIRE\_DT = 1.0
+\verb"    "! initial time step.  unit fs -- for method=6. 
+\verb"    "! the max time step for FIRE method is 10*FIRE\_DT. 
+RHOWG\_INTER\_TYPE = 1 
+\verb"    "! interpolation type for NEB,0--both rho and wave function; 1--rho.
+\verb"    "! default = 1, save time by not writing wavefunction to disk 
+
+```
+
+**NSTEP**: the maximum number of line-minimization steps in the relaxation process. This is the NEB steps.
+
+**FORCE\_TOL**: the atomic force tolerance ($eV/{\angstrom}$) to stop the relaxation. This is the maximum atomic force (after the component along the string direction has been projected out) of all the atoms and all the images.
+
+**NIMAGE**: the number of images in the NEB method (these are the images except the initial and final two valleys). So, there are in total NIMAGE+2 configurations in the string of images connection the initial and final configurations. In a NEB calculation, NIMAGE+2 atomic configurations (called images) are used, which connect the configuration from the initial state to the final state. Initially, the NIMAGE intermediate images are generated by linear interpolations of the two end images (the two end images, one initial, one final, are input by the user). The two end images will not be changed, while the NIMAGE intermediate images will be relaxed.
+
+**AK**: the spring constant for the image string ($eV/{\angstrom}^2$). In the NEB, a string connecting the images are used to ensure the coverage between the initial and final configurations. $AK$=0.1 to 1 $eV/{\angstrom}^2$ are reasonable values. Larger $AK$ (especially for TYPE\_SPRING=2), better the convergence, but it can introduce bigger errors (for TYPE\_SPRING=2).
+
+**TYPE\_SPRING**: the type of string used in NEB algorithm.
+
+|TYPE\_SPRING|Description|
+| --- | --- |
+|1|the original NEB algorithm (where the string force perpendicular to the string tangent is removed)|
+|2|a conventional string, the perpendicular string force is not removed|
+|3|the regular NEB algorithm(Improved tangent estimate in the nudged elastic band method for finding minimum energy paths and saddle points) \cite{RENEB}|
+
+TYPE\_SPRING=2 converges better, but it can introduce an error (larger $AK$, larger the error). But one can first use larger $AK$, then after the initial NEB relaxed, re-runs NEB using smaller $AK$ (or TYPE\_SPRING=1,3). This will help the convergence.
+
+Usually the TYPE\_SPRING=1,2,3 converge good with IMTH=5,6. One can directly try the TYPE\_SPRING=1 or 3 with IMTH=5 or 6, if bad, then follow the above advice(use TYPE\_SPRING=2 first).
+
+Additionally, one can use TYPE\_SPRING=11,22,33 for CI-NEB(11-original CI-NEB, 22-conventional string CI-NEB, 33-regular CI-NEB). The climbing image NEB(CI-NEB) method constitutes a small modification to the NEB method\cite{CINEB}. Information about the shape of the MEP is retained, but a rigorous convergence to a saddle point is also obtained. CI-NEB will choose the image with highest energy as the climbing image, then reformat the force on the climbing image. The force on the climbing image is the full force due to the potential with the component along the elastic string inverted, so the climbing image is not affected by the spring forces, and will climb up along the elastic string to converge rigorously on the highest saddle point. 
+
+
+Some suggestions
+
+1. How to choose NEB method -- TYPE\_SPRING
+
+As mentioned above, TYPE\_SPRING=2 is easy to converge, but can introduce large error. So if TYPE\_SPRING=1 or 3 converges bad, you can first run the TYPE\_SPRING=2 to get a better guess of the MEP, then rerun NEB with TYPE\_SRPING=1 or 3.
+
+For TYPE\_SPRING=1 (original NEB) and TYPE\_SPRING=3 (regular NEB), both has intrinsic instability. For the original NEB, "In systems where the force along the minimum energy path is large compared to the restoring force perpendicular to the path and when many images of the system are included in the elastic band (string), kinks can develop and prevent the band from converging to the minimum energy path". For the regular NEB, the spring force's formulation omits the the spring force that is perpendicular to the local tangent, then you may encounter that pathway deviate from the MEP and the overall path lengths may grow out of proportion. \cite{AUTONEB}
+
+Maybe your first choice can be TYPE\_SPRING=1, if you find the 'kinks' is the problem, then try TYPE\_SPRING=3.
+
+2. How to choose relaxation method -- IMTH
+
+All IMTH=1,2,3,4,5,6 are methods based on forces, and IMTH=1,2,3,4 each has an exact line-minimization, IMTH=5,6 do not have exact line-minimization. If the forces are not smooth in the calculations, methods with exact line-minimization may not converge well (you will see jumps of the energy as a function of iteration steps). In NEB calculations we recommend the IMTH=5,6. IMTH=5 (Limited-memory BFGS) is fast, and you can set RELAX\_MAXMOVE in file IN.RELAXOPT to make it more stable or more aggressive. IMTH=6 (Fast Inertial Relaxation Engine) is stable, and you can set FIRE\_DT in file IN.RELAXOPT to get more stable or more faster convergence.
+
+We recommend the first choice is IMTH=5.
+
+3. How to choose the pseudopotentials
+
+PWmat provide several types of pseudopotentials, NCPP-SG15, NCPP-PD03, NCPP-PD04, ONCV-PWM-PBE, etc.
+We recommend to try to  use the ONCV-PWM-PBE first, it is more smooth, and more easy to converge for relaxation. However, you might want to test this pseudopotential with the more accurate ones, like SG15 and PD03. There are cases the PWM-PBE gives the wrong results. But if it works, you can use it for large system calculations.
+If you want to use SG15,PD03,or PD04, we recommend to use bigger Ecut (e.g, 50, 60 Ryd), and set Ecut2=4*Ecut (to avoid egghead problem).
+
+4. How to do CI-NEB
+
+Do not use CI-NEB from the beginning, that will converges bad. PWmat CI-NEB will choose the climbing image automatically, so the climbing image could change during the convergence process if do CI-NEB from the beginning.
+We recommend first converge your NEB calculation, then rerun use the CI-NEB. (CI-NEB is specified use TYPE\_SPRING: 11-original CI-NEB, 22-conventional string CI-NEB, 33-regular CI-NEB).
+
+5. The last but not least
+
+Make sure the SCFs are converged.
+
+**E\_0,E\_N**: the precalculated (e.g., using JOB=RELAX) initial ($E_0$) and final ($E_N$) local minima energies (in $eV$) for configurations in ATOM.CONFIG and ATOM2.CONFIG. Actually, these numbers are not used in the algorithm, but will make plotting more straight forward.
+
+**ITYPE\_AT2, ATOM2.CONFIG**: the type of ATOM2.CONFIG file and the atomic position file name: ATOM2.CONFIG.
+
+|ITYPE\_AT2|Description|
+| --- | --- |
+|1|the type of ATOM2.CONFIG file is the second minimum configuration (the first local minimum configuration is given in IN.ATOM = ATOM.CONFIG). Then, from ATOM.CONFIG to ATOM2.CONFIG, NIMAGE equal distance images will be created by linear interpolations.|
+|2|ATOM2.CONFIG contains all the NIMAGE+2 image configurations, including the initial and final images. Thus ITYPE\_AT2=2 is a continued NEB run following the previous NEB runs. You can use the final.config from a previous unconverged NEB run as ATOM2.CONFIG, or copy a group of images from MOVEMENT file. In this case, the ATOM.CONFIG in IN.ATOM = ATOM.CONFIG is not used (but that line still need to be provided). There are cases where the linear interpolation between the first and the last configuration will generate some unphysical NIMAGE IMAGIES (e.g., with atoms too close together, or bond orders wrong). In that case, the user can use ITYPE\_AT2=2 to provide NIMAGE intermediate images manually, to avoid the unphysical interpolation.|
+
+### SCFEP\_DETAIL
+
+|Tag|SCFEP\_DETAIL|
+| --- | --- |
+|**Format**|SCFEP\_DETAIL = Level1, Level2, $\alpha$, Numkpt, Numspin|
+|**Default**|None|
+
+This is a required line for JOB=SCFEP electron-phonon coupling constant calculation.
+The calculated electron-phonon coupling constant will be reported in OUT.EP\_COEFF. See JOB=SCFEP (see \ref{jobscfep}) for details. In the JOB=SCFEP calculation, one must use IN.WG=T, an input wave function file will be provided. The electron-phonon coupling constant written in OUT.EP\_COEFF will report: $<\psi(i_1,k,s)|\partial H/\partial R|\psi(i_2,k,s)>$, here $\psi(i,k,s)$ is the input wave function from IN.WG for state index i, kpoint k, and spin s.
+
+**Level1, Level2**: The wave function index $i_1$ and $i_2$
+
+**$\alpha$**: a small number (e.g., 0.1) used to add $\alpha \psi(i1)*\psi(i2)$ onto the charge density to do SCFEP calculation. Here, we assume $\psi(i1)$ and $\psi(i2)$ are real. Suggested $\alpha$ is 0.1. Smaller this number, the numerical derivative will be more accurate, but it also require higher level convergence for the SCF calculations.
+
+**Numkpt**: The kpoint index k for $\psi(i,k,s)$.
+
+**Numspin**: The spin index s (1 or 2) for $\psi(i,k,s)$.
+
+### SCF\_SPECIAL    
+
+|Tag|SCF\_SPECIAL|
+| --- | --- |
+|**Format**|SCF\_SPECIAL = iflag, Ef0, i1, i2, j1, j2, k1, k2|
+|**Default**|SCF\_SPECIAL = 0|
+
+This special option is for nonequilibrium boundary condition calculation for JOB=SCF. Currently, it does not support JOB=NONSCF and JOB=MD (it can run, but the results might not be good). In many problem (for example, device simulation), there could be fixed electrode potentials, there we like the potential to satisfy some specific boundary condition. Note, this might be different from the fixed Fermi Grand canonical calculation, where one electrode potential is fixed. The fixed Fermi is often used together with solvent model with Poisson-Boltzmann method. In the current case, it is often for pure solid calculation, and there is no implicit solvent model. Besides, it is often the case, there are several electrodes. We like the potential on some boundaries (enclosing boundary) to be the given values (e.g., representing the on and off of a CMOS gate, or the source and drain bias potential). Furthermore, this is truely an nonequilibrium simulation, as these boundary values (of the electrode voltage) is often related to the local Fermi energy. So, there is not a single Fermi energy in the simulation. We thus have to use position dependent Fermi energy. Thus, iflag=1 will represent such JOB=SCF calculations. It will give the SCF potential file under such boundary condition. This potential file can be used for quantum transport calculation.
+
+To do such nonequilibrium calculation, we will do two steps.
+
+In the step one, a normal JOB=SCF calculation (iflag=0, or without the SCF\_SPECIAL line) will be carried out. We will take its global Fermi energy as Ef0 (eV) input in the above line. Besides, copy OUT.VR into IN.VR0, which will be used for iflag=1 calculation. Also please copy OUT.RHO into IN.RHO, OUT.WG into IN.WG for
+subsequent iflag=1 calculation for fast convergence.
+
+In the second step, set iflag=1. Place Ef0 as mentioned above. Now, we need to use i1,i2,j1,j2,k1,k2 to specify the boundary condition. These are the grid points in the n123 grid of the iflag=0 calculation. More specifically, $i1,i2 \in [1,n_1]$, $j1,j2\in [1,n_2]$, $k1,k2\in [1,n_3]$. These are the planes where the fixted potential will be speficied. Note, the boundary condition is not determined by the edge of the periodic box, instead they are specified by these plane. These plane will define a smaller box inside the periodic box, the corner of this smaller box is at [i1,j1,k1], while the size of this box is: (i2-i1,j2-j1,k2-k1). Note, for this calculation, it is essential to shift the coordinates, so this small box is in the middle of the periodic box. Besides, it is also for some dimention to be periodic. in that case, the corresponding ijk1,ijk2 should both be zero. For example, to have the periodic condition in the second dimension, we should have j1=0,j2=0.
+
+Now, for the dimensions which are not periodic boundary condition (their ijk1,2 are not zero), we need to prepare the corresponding IN.2D\_VR.1, IN.2D\_VR.2, IN.2D\_VR.3 file. For example, if i1,i2 are not zero, then we need a IN.2D\_VR.1 file. This file specifies the dEf(r) on the two planes of i1,i2. More specifically, it is written in the following format (ascii file, so it can be viewed and plotted):
+
+```fortran
+    do k=1,n3
+    do j=1,n2
+    write(IN.2D_VR.1,*) dEf1(j,k), dEf2(j,k)
+    enddo
+    write(IN.2D_VR.1,*)
+    enddo
+```
+Note, the two columns are for the i1,i2 two planes. There is an empty line, and the for i,j,k (n1,n2,n3), the earlier index are numerated first. This special format is used, so it can be plotted in gnuplot using "splot".
+
+The units for dEf1,dEf2 are in eV. These IN.2D\_VR.1,2,3 files are prepared by utility programs (e.g., gen\_D2V.f), or written by the user. Note, the dEf1,2 are shift of the Fermi energy (also the potential V(r)) in reference to the Ef0 (V0(r)) at those boundary. Thus, the potential V(r) at those boundaries equals to V0(r)+dEf(r). After this, one can run the PWmat again. It will generate the system under the fixed boundary
+condition, the OUT.VR can be used to calculate the quantum transport for device simulation.
+
+Here, we explain the underlying algorithm used to carry out the calculation. There are two aspects. One is the Poisson solution to satisfy the fixed boundary condition, another one is the occupation of the wave functions. For the Poisson solution, for a given charge $\rho(r)$, we first use the conventional FFT method to solve a periodic Poisson solution, to get $V_P(r)$. Note, in order to satisfy V(r) equals V0(r)+dEf(r) at the boundary, we can define: $dV_B(r)=V0(r)+dEf(r)-V_P(r)$ on the boundary (of the inner box, defined by i1,i2,j1,j2,k1,k2). Then solve a fixed boundary condition Poisson equation with zero charge, get dV(r) for values inside the box. This is solved by the Fishpack package. Then $V(r)=V_P(r)+dV(r)$. For dV(r) outside the box, we have used simple extension, from its boundary value.
+
+For the occupation, we have used a spatial dependent Fermi energy $Ef(r)=V(r)-V0(r)+Ef0+dE$. The occuption is done with with spatial dependent Fermi energy as: $\rho(r)=\sum_i occ((\epsilon_i-Ef(r))/kT) |\psi_i(r)|^2$, here $\epsilon_i$ is the eigen energy, and occ is the Fermi-Dirac occupation function. Note, we have used a small shift dE to guarantee we get the exact required total charge. Note, this procedure gaurantee the local Fermi energy is at the same position of the local density of state compared with the neutral charge calculation at the step 1. This local Fermi energy is important. For many device systems, the Fermi energy at the electrode is higher than the conduction band in the substrate etc. So, if a global Fermi energy is used, it can be cause large charge slashing from one side to another, which is not physical. In reality, under the open boundary condition (for the current), the system can maintain an steady state nonequilibrium solution, where spatially dependent Fermi energy exists.
+
+### MD\_SPECIAL
+
+|Tag|MD\_SPECIAL|
+| --- | --- |
+|**Format**|MD\_SPECIAL = iflag, x1, x2, x3, Rcut, dR, dV|
+|or|MD\_SPECIAL = iflag, x1, x2, x3, Rcut, dR, dV, frac, P, rate|
+|**Default**|MD\_SPECIAL = 0|
+
+**iflag**: the flag for the MD special constraint. See below for details.
+
+|iflag|Description|
+| --- | --- |
+|0|no special constraint|
+|1| this is a special constraint in MD. In this option, at t=0, all atoms within Rcut from the center (x1,x2,x3) will be frozen, and all the other atoms will be subjected to a spherical potential with height dV (eV) centered at (x1,x2,x3) (fractional coordinate) with radius cut-off Rcut (ansgtrom) and a buffer  dR (in a potential file as: dV*exp(-(r-Rcut)/dR)/(exp(-(r-Rcut)/dR)+1)). This is used to keep the atoms out (dV>0) from one domain, or keep the atoms within one domain (dV<0).|
+|2|this is the same as iflag=1, except, the atoms within Rcut will not be frozen.|
+|22|this is the same as iflag=2, except, when calculating the distance for one atom position (x1a,x2a,x3a) to the spherical center (x1,x2,x3), one do not do periodic wraping for the atoms position. Instead, the atoms position (x1a,x2a,x3a) are defined within ([0,1],[0,1],[0,1]) range. This can be useful, for example, to restraint the water on top of a slab, where one place the (x1,x2,x3) below the slab, so the water will be inside a halfdome on top of the slab, but it will not affect the water on the other side  of the periodic box.|
+|3|this option requires the frac,P,rate in the input line. frac is the fraction [0,1] of the halfdome to the whole sphere. E.g., if the sphere is a halfdome above a substate (like in iflag=22,33), then the frac will be less than 1. This is used to estimate the surface of the halfdome. P: the desired pressure in the unit of bar (0.987atmosphere). rate is a MD change rate for each MD step. The idea here is that, during MD, one can change Rcut (radius) of the confinement sphere (usually, dV is negative for this), so the pressure on the confinement wall equals to P. This will help to decide what Rcut one should use. Note, P should not be too small, otherwise it might be difficult to converge. We recommend(e.g.): P = 50 bar (atmosphere), rate=0.02. Note, one should have a reasonably large dR, so the force will not be too large. For example, dV=-2 (eV), dR=1(A).  frac is determined from the geometry. If it is a full sphere constraint, then frac=1. For iflag=33, e.g., an halfdome constraint, then it is the solid angle ratio between the halfdome solid angle and the 4$\pi$ full sphere solid angle (this is used to calculate the halfdome surface area). The actually pressure (P\_sph), the input desired pressure P\_MD\_sp (=P), and the dynamically adjusted Rcut (Rcut\_MD\_sp) will be reported in the header of MOVEMENT file for each step.|
+|33|same as iflag=3, except, when calculating the distance for one atom position (x1a,x2a,x3a) to the spherical center (x1,x2,x3), one do not do periodic wraping for the atoms position. Instead, the atoms position (x1a,x2a,x3a) are defined within ([0,1],[0,1],[0,1]) range. This can be useful, for example, to restraint the water on top of a slab, where one place the (x1,x2,x3) below the slab, so the water will be inside a halfdome on top of the slab, but it will not affect the water on the other side  of the periodic box.|
+
+In iflag=1,2,3,22,33, one can use a "Weight\_Atom" section in xatom.config file to specify which atom can feel this potential (or how much weight to feel this potential). More specifically, in the xatom.config file, one can add a section like:
+
+```bash
+Weight\_Atom
+1
+iatom(1), weight(1)
+iatom(2), weight(2)
+....
+iatom(natom),weight(natom)
+```
+
+The weight(i), for i=1,natom can be used for many special purposes in the code where a coefficient for an atom is needed. iatom(i) is the atom z-number. So, as a result, the potential felt by each atom is dV*weight(i). So, one can turn-off some of the atoms to feel this particular potential.
+
+### MD\_SPECIAL2
+
+|Tag|MD\_SPECIAL2|
+| --- | --- |
+|**Format**|MD\_SPECIAL2 = iflag, Rcut, dR, dV|
+|**Default**|MD\_SPECIAL2 = 0|
+
+This is typically used together with MD\_SPECIAL=1, with its center defined using x1,x2,x3 defined in the MD\_SPECIAL line. It defined another potential using parameters Rcut, dR and dV. However, it will be applied to the atoms with weight(i,2), which is defined in the xatom.config file section Weight\_Atom as:
+
+```bash
+Weight\_Atom 
+2
+iatom(1), weight(1), weight2(1)
+iatom(2), weight(2), weight2(2)
+....
+iatom(natom),weight(natom), weight2(natom)
+ 
+```
+
+### MD\_SPECIAL3
+
+|Tag|MD\_SPECIAL3|
+| --- | --- |
+|**Format**|MD\_SPECIAL3 = iflag, m1, m2|
+|**Default**|MD\_SPECIAL3 = 0|
+
+This is a very special case for electron phonon coupling calculation. The idea is to input m1 wave function $\phi_1(i)$ for i=1,m1, and m2 wave function $\phi_2(i)$ for i=1,m2 at the beginning of the MD simulation from files IN.WG1\_MDSP3, IN.WG2\_MDSP3. Then during the MD simulation, at every dt step, it will output: $hh(i,j)=<\phi_1(i)|H(t)|\phi_2(j)>$. Note, the H(t) is Hamiltonian at time t, and $\phi_1(i)$ and $\phi_2(j)$ are not changed during the MD.
+
+The $m1\times m2$ double complex matrix $hh(i,j)$ is written inside the binary file: MDSP3.hh.out 
+in an concatenation style (position="append"), i.e, continuesly written at its end. It has
+the following format:
+
+```bash
+t, m1, m2, nkpt, islda
+hh(m1,m2,nkpt,islda)
+t, m1, m2, nkpt, islda
+hh(m1,m2,nkpt,islda)
+....
+t, m1, m2, nkpt, islda
+hh(m1,m2,nkpt,islda)
+```
+
+One can used the small utility file plot\_MDSP3.f to plot it out. The IN.WG1\_MDSP3, IN.WG2\_MDSP3 have the same format as IN.WG (if there are spin=2, then we also need IN.WG1\_MDSP3\_2, IN.WG2\_MDSP3\_2). But their number of wave functions m1, m2 can be much smaller than mx in IN.WG. They can be selected from OUT.WG from some previous runs (e.g, defect wave functions) using utility file: Select\_WG.f90. 
+
+### MD\_SPECIAL4
+
+|Tag|MD\_SPECIAL4|
+| --- | --- |
+|**Format**|MD\_SPECIAL4 = iflag, Rc|
+|**Default**|MD\_SPECIAL4 = 0|
+
+This is also usually used together with MD\_SPECIAL=1, but with solvent model. It excludes the solvent effect from the center of the x1,x2,x3 defined in the MD\_DPECIAL=1 line, with a radius of Rc (A unit). This is done by adding some charges at the center when defining the dielectric constant. This is used to prevent the solvent effects to intrude into the center region.
+
+### NAMD\_SPERICAL
+
+|Tag|NAMD\_SPERICAL|
+| --- | --- |
+|**Format**|NAMD\_SPERICAL = iflag\_NAMD\_sp, param1, param2|
+|**Default**|NAMD\_SPERICAL = 0|
+
+This is an optional input section for special input parameters (param1,param2) for JOB=NAMD calculations. Default iflag\_NAMD\_sp=0, the parameters are not used.
+
+When iflag\_NAMD\_sp=1, it will output the dipole moment matrix at every MD step in a file called OUT.NAMD\_SP. It is a binary file, with the following format.
+
+```fortran
+Do istep=1,nstep
+
+write(OUT.NAMD\_SP) istep,islda,nkpt,param1,param2,mst\_win,time
+
+Do iislda=1,islda
+
+DO kpt=1,nkpt
+
+write(OUT.NAMD\_SP) PXYZ
+
+ENDDO
+
+ENDDO
+
+ENDDO
+
+```
+
+Here PXYZ is a complex*16 matrix PXYZ(mst\_win,param2-param1+1,3). mst\_win=m\_2-m\_1+1 from NAMD\_DETAIL, are the number of states output for NAMD calculation. Thus: $PXYZ(i,j,k)=<\phi_i|P_k|\phi_j>$, here k=1,2,3, and $P_k$ is the momentum operator $i\nabla_k$.
+
+### CHARGE\_DECOMP
+
+|Tag|CHARGE\_DECOMP|
+| --- | --- |
+|**Format**|CHARGE\_DECOMP = T / F|
+|**Default**|CHARGE\_DECOMP = F|
+
+This will create an atomic charge on each atom using the Hirshfield algorithm, and reported the result in output file OUT.QDIV for JOB = SCF calculation. For spin = 2, it will report total charge, and magnetic\_moment = charge\_up - charge\_down. If the job is to do molecular dynamics (JOB = MD), then the atomic charge will also be reported in MOVEMENT. This option is useful for charge analysis. For the Hirshfield algorithm, the charge on one atom i is defined as: $Q_i=\int \rho(r) {\rho_{atomtype(i)}(r-R_i) \over \sum_j \rho_{atomtype(j)}(r-R_j)} d^3r $, here $\rho_{atomtype(i)}(r)$ is the neutral charge density of the atom type atomtype(i) described in the atom pseudopotential file xxx.upf. Note, this option only works for norm conserving pseudopotential.
+
+### ENERGY\_DECOMP
+
+|Tag|ENERGY\_DECOMP|
+| --- | --- |
+|**Format**|ENERGY\_DECOMP = T / F|
+|or|ENERGY\_DECOMP = T / F, type|
+|**Default**|ENERGY\_DECOMP = F 1|
+
+This will decompose the total DFT (LDA, PBE only, but it also works for IN.SOLVENT=T, as well as Poisson-Boltzmann equation) energies into the energies belong to each atom (atomic energies). The sum of the atomic energies will be equal to the total DFT energy (but differ by a constant, this constant is independent of the position of the atom, as well as the lattice length. Basically, each atom will miss an atom type specific energy constant, an onsite energy term). It rewrites the total energy as an spatial integral of the positive energy density term, and use the Hirshfield algorithm to decompose such energy density into each atom, much like the above decomposition for the charge density. See Ref.[J. Kang, L.W. Wang, Phys. Rev. B 96, 020302(R)(2017)]  for details. For JOB = SCF, the decomposed energy will be reported in OUT.ENDIV. For JOB = MD, the decomposed energy will also be reported in MOVEMENT. These decomposed energies can be used to do force field fitting.
+
+**type**: This is an optional input. The default is type=1. There are four options for type,
+|type|Description|
+| --- | --- |
+|1,11|the electrostatic energy density is expressed as: $1/8\pi \|E(r)\|^2$ (here E is the electric field). This is positive everywhere, but it can have large amplitude even in vacuum region.|
+|2,22|the electrostatic energy density is expressed as: $1/2 \rho(r) V(r)$, here $\rho(r)$ is the charge density including both electron and nuclear charge, V(r) is the total electrostatic potential. So, this only has values where $\rho(r)$ is not zero. Note, for all types, for IN.SOLVENT=T, the solvent polarization induced electrostatic energy density is always represented as $\rho_{solute}(r)V_{polarization}(r)$.|
+|1,2|a straight forward Hirshfeld spatial partitioning is used to partition the energy density, to yield the energy for each atom. However, for the Hirsheld partitioning, the atomic charge (amplitude and shape) can be altered by the parameter in ENERGY\_DECOMP\_SPECIAL and ENERGY\_DECOMP\_SPECIAL2.|
+|11,22|an atomic weight watom(iatom) is used, and dynamically adjusted, so when doing charge decomposition, it will yield the atomic charge equal to the neutral atom charge z(atom\_type). This watom(iatom) is then used to do the energy decomposition. The hope is that, by getting the fixed charge density, the energy part (especially when using type=22) will have minimum variations. All these are designed to get the minimum fluctuation of the atomic energy. Note, there are additional costs by doing type=11,22, in order to find watom(iatom) for each atomic configuration. The watom(iatom) are listed in the last column in OUT.ENDIV, or the corresponding section in MOVEMENT.|
+
+>
+>**TIP**: If ENERGY\_DECOMP\_COULOMB=T, then type=1/2 are the same, and type=11/22 are the same. The detailed option will be determined by imth in the ENERGY\_DECOMP\_COULOMB line. Please check that section.
+{: .block-tip}
+
+>
+>**WARNING**: ernergy decomposition does not support NUM\_BLOCKED\_PSI = T .
+{: .block-warning}
+
+### ENERGY\_DECOMP\_SPECIAL
+
+|Tag|ENERGY\_DECOMP\_SPECIAL|
+| --- | --- |
+|**Format**|ENERGY\_DECOMP\_SPECIAL = w(1), w(2), ...., w(ntype)|
+|**Default**|ENERGY\_DECOMP\_SPECIAL = 1, 1, ..., 1|
+
+This is an additional option for ENERGY\_DECOMP=T as well as CHARGE\_DECOMP=T. This option modifies the weight for each atom type, not just using $\rho_{atomtype(i)}(r)$, but using $w(atomtype(i))*\rho_{atomtype(i)}(r)$ as the weight in the Hirshfeld method to calculate the charge and energy. The default values for all w(i) are 1.
+
+### ENERGY\_DECOMP\_SPECIAL1
+
+|Tag|ENERGY\_DECOMP\_SPECIAL1|
+| --- | --- |
+|**Format**|ENERGY\_DECOMP\_SPECIAL1 = eta(1), eta(2), ...., eta(ntype)|
+|**Default**|ENERGY\_DECOMP\_SPECIAL1 = 1, 1, ..., 1|
+
+This is a very special input, please don't use it if you don't know the technical detail.  In order to do the energy decomposition, for each input atom.UPF pseudopotential file, it will generate the corresponding: atom.UPF.ionrhoR, atom.UPF.rhoq, atom.UPF.rhoatom, files. They are the real space $v\_{loc}(r)$ file before and after fitting; q-space $v_{loc}(q)$ file before and after fitting, and $\rho(r)$ used for spatial partitioning function to generate the atomic quantities. It is worth to plot $v_{loc}(r)$, especially $v_{loc}(q)$. In $v_{loc}(q)$, for $0 < q < q_{c}/2$, it is the original $v_{loc}(q)$, while for $q_{c}/2 < q < q_{c}$ is the fitted one. Make sure the fitted one is close to the original one, there is no big variation. If there are large change, one can modify eta(itype). The default eta value is 1. Larger eta can make the $v_{loc}(q)$ smoother, but could be less accurate in some sense. One can set eta to 1.5 for example if $v_{loc}(q)$ for $q_{c}/2 < q < q_{c}$ is large.
+
+This is an additional option for ENERGY\_DECOMP=T as well as CHARGE\_DECOMP=T. This option modifies the weight for each atom type, not just using $\rho_{atomtype(i)}(r)$, but using $w(atomtype(i))*\rho_{atomtype(i)}(r)$ as the weight in the Hirshfeld method to calculate the charge and energy. The default values for all w(i) are 1.
+
+### ENERGY\_DECOMP\_SPECIAL2
+
+|Tag|ENERGY\_DECOMP\_SPECIAL2|
+| --- | --- |
+|**Format**|ENERGY\_DECOMP\_SPECIAL2 = exp\_decomp a(1) a(2) ... a(ntype) b(1) b(2) ... b(ntype)|
+|**Default**|ENERGY\_DECOMP\_SPECIAL2 = 1|
+
+This is used to control the atomic charge density $\rho_{atom}(|r-R|)$ to be used in the Hirshfeld formula.
+
+$\rho_{atom}(|r-R|)=\rho_{atom}(|r-R|) + a(atomtype(R)*exp(-(|r-R|/b(atomtype(R)))^2))$
+
+The together with the weight input in ENERGY\_DECOMP\_SPECIAL, the Hirshfeld partition function for atom R at position r, is given as:
+
+$\rho_{atom}^{exp\_decomp}(|r-R|) w(atomtype(R))/\sum_{R'} \rho_{atom}^{exp\_decomp}(|r-R'|)w(atomtype(R'))$
+
+(Note, there could be an additional weight watom(iatom) for type=11,22 partitioning method). So, higher value of exp\_decomp (e.g., 2) can make the partitioning more local, and the interface more abrupt, but it can also be less smooth. 
+
+Note, the parameters in ENERGY\_DECOMP\_SPECIAL1, and ENERGY\_DECOMP\_SPECIAL2 can also be used to control the CHARGE\_DECOMP.
+
+### ENERGY\_DECOMP\_COULOMB
+
+|Tag|ENERGY\_DECOMP\_COULOMB|
+| --- | --- |
+|**Format**|ENERGY\_DECOMP\_COULOMB = T / F, iconstr,imth,fac1,fac2,numG,q2W,iout|
+|**Default**|ENERGY\_DECOMP\_COULOMB = F|
+
+This is an option for Coulomb potential charge fitting. It can either do it on the flight (imth=1,2), or use an already fitted spherical atomic charge model (funcq\_atom.fit), and recalculate the electrostatic Coulomb interaction energy. This will affect the electrostatic interaction involving both the electron charge and nuclear charge. The idea is to fit the electron charge density, and calculate the $rho_{fit}*rho_{fit}$ interactions analytically (using atom-center pair interaction), and we will have a residuation charge: $rho_{res}=rho-rho_{fit}$, and hopefully this residue is small, and it will not have long range interaction. In terms of fit, we can do on the flight, as in imth=1,2 (this is done for using 1 or 2 Gaussians for each atom, and either we have fitting, or we have no fitting, just use the previously fitted results), or we can have an more extensive fitting, using the vion\_coulomb\_fit.f90 utility file, to generate the funcq\_atom.fit files to be read by the program.
+
+>
+>**TIP**: Note, ENERGY\_DECOMP\_COULOMB = T does not work with Solvent model.
+{: .block-tip}
+
+**imth=1,2**: fitting the charge with Gaussian on the flight. The idea is to use one or two (numG) Gaussians to represent a charge density at a given atom. **iconstr=1**: (this is only used under imth=1,2), one must provide a IN.CONSTRAINT\_COULOMB to give information for constrains during the density fitting. This can be used to specified, the sum of the charge of a few atoms (or one atom) must be a given number. The fitted charge will output in: OUT.natom\_coulomb\_fit.
+
+When ENERGY\_DECOMP\_COULOMB = T, one "ENERGY\_NATOM\_COULOMB" section must be provided in atom.config file. This section has the following format (note for imth=3, this section is not really used, but nevertheless, please provide an place holder faked section ):
+
+```bash
+ENERGY_NATOM_COULOMB
+ 4                       # natom_fit
+ 151  15  0.20 0.5       # atom order in xatom; zatom, a1, a2 (A)
+ 152   9  0.15 0.4       # atom order in xatom; zatom, a1, a2 (A)
+ 153   9  0.15 0.4
+ 154   9  0.15 0.4
+ ------------------------
+ 150                                 # natom_fix
+ 1   8  0.3 0.5 -10.674, 11.914      # atom_order,zatom,a1,a2(A),Q1,Q2
+ 2   8  0.3 0.5 -10.674, 11.914      # atom_order,zatom,a1,a2(A),Q1,Q2
+ 3   8  0.3 0.5 -10.674, 11.914      # atom_order,zatom,a1,a2(A),Q1,Q2
+ 4   8  0.3 0.5 -10.674, 11.914      # atom_order,zatom,a1,a2(A),Q1,Q2
+ ..... (150 lines)
+```
+
+Note, the a1,a2 are the size of the two Gaussian (even if numG=1, only one Gaussian is used, please provide two columns, for the place holder, the format is fixed). The atom\_order is the index of the atom in the original xatom.config (Note, if the atoms are not in consequetive order for different atom types, this first index will be changed, to the index in output xatom.config file. The natom\_fit is the atoms to be fitted (to get their charge parameters Q1,Q2), while the natom\_fix is the atoms which already fitted before, thus already know the Q1,Q2 (the charge on these two Guassian functions).
+
+natom\_fit and/or natom\_fix can be zero (for imth=3, one can set both to be zero). Note, if desired, it is okay for only fiting the charge for a few atoms, instead of all the atoms. Or one can first fit the Q1,Q2 from some other systems, then use them as natom\_fix, and fit some additional atoms in this system.
+
+**numG=1, or 2**: In above, in the section of ENERGY\_NATION\_COULOMB, there are always two Gaussians. Actually, one can adjust the number of Gaussian, numG=1 means only use 1 Gaussian (but there should still have two columns in the ENERGY\_NATION\_COULOMB section, only the first column is used). When numG=2, two Gaussians are used.
+
+**iconstr=1**: the IN.CONSTRAINT\_COULOMB section has the following format:
+
+```bash
+2                       # number of constrains (followed by num lines)
+3  1.0 1,2,3            # Num_atom; Qtot, ind1,ind2,ind3,...
+1 -1.0 4                # Num_atom; Qtot, ind1,ind2,ind3...
+```
+
+Note, each line is one constrant.  Qtot is the total charge of these few atoms within this constraint. Ind1,ind2,ind3 are the atom number index of the atoms within the natom\_fit sequence in the ENERGY\_DECOMP\_COULOMB section of the xatom.config file. Note, they are not the index in the original xatom.config atom sequence. They are index within the list of natom\_fit (e.g., must be less or equal to natom\_fit. For example, the 1, 2, 3 atoms in the above example correspond to atoms 151, 152, 153.
+
+The fitted natom\_fit Q1,Q2 results are shown in OUT.natom\_coulomb\_fit  (together with the natom\_fix Q1,Q2 results input within the ENERGY\_NATOM\_COULOMB section of xatom.config).
+
+**imth=1**: In this method, $\rho_{res}(r)=\rho(r)-\rho_{fit}(r)$, note, $\rho(r)=\rho_{el}-\rho_{nuclear}$. So, the fitting is done for the total charge density (including nuclear), not just for the electron charge density. Then: Electrostatic potential density equals: $E_{elst}(r)={1\over 8\pi} |\nabla V_{res}(r)|^2+\rho_{fit}V_{res}(r)$ (excluding $\rho_{fit}*\rho_{fit}$ interaction). In the Hirshfeld parititiong, only the first term is partitioned, the second term is directly integrated for each atom, thus we have a $E(Q*V_{res})$ term (Q is the fitted charge), which is listed as one column in OUT.ENDIV.
+
+To get the atom decomposed energy  without new fitting(after excluding the fitted charge Coulomb interactions), one can set natom\_fit=0 in the ENERGY\_NATOM\_COULOMB section of xatom.config file.
+
+**imth=2**: In this option, the energy density (excluding the $\rho_{fit}*\rho_{fit}$ interaction) is expressed as: ${1\over 8\pi} [|\nabla V(r)|^2 fac1- |\nabla V_{fit}(r)|^2 fac2]$. Here V(r) is the Coulomb potential of $\rho(r)=\rho_{el}-\rho_{nuclear}$, and $V_{fit}$ is the Coulomb potential of $\rho_{fit}$. So, normally, **fac1 and fac2** should be one. They are provided here, just for the purpose of analysis. Note, in this option, there is no $E(Q*V_{res})$ term, and this column in OUT.ENDIV will be zero.
+
+**imth=3**: In this option, there is no on-the-flight fitting. Instead, a prior fitted atomic charge will be used. In this option, all the atoms need to be fitted, not just for a selected subset. The fitted spherical charge density for each atom type in q-space is input from a file called: funcq\_atom.fit. This funcq\_atom.fit is obtained from the utility code vion\_coulomb\_fit.f90, based on the output charge density file OUT.rho\_EpN ($\rho_{el}-\rho_{nuclear}$)  from a previous ENERGY\_DECOMP\_COULOMB run. The electrostatic energy denisty is expressed as ${1\over 8\pi} |\nabla V_{res}(r)|^2+\rho_{fit}V_{res}(r)$. But unlike in imth=1, the second term is not integrated for each atom, instead, it is included in the Hirshfeld partitioning. This imth=3 can significantly reduce the total electrostatic interaction energy (e.g, by a factor of 1000 in the case of melted NaCl).
+
+**q2w**: a parameter (unit 1/A) used for a factor $exp(-(q*q2w)^2/4)$, this factor is used in the on-the-flight fitting of the Gaussian charge density to reduce the electrostatic energy: $\sum_q |\rho_{res}(q)|^2*exp(-(q*q2w)^2/4)*4\pi/q^2$. The idea is that, we can use this parameter to emphasize only the small reciprocal vector q components, hence only the long range part of the Coulomb interaction. Note, this factor is also used when generating output "OUT.Coulomb\_EpN" and "OUT.Coulomb\_residual". It can be used to filter out the high energy components.
+
+**iout= 0 or 1**: 1 will mean there will be output (every MD step, rewrite) charge density: OUT.rho\_EpN  ($\rho_{el}-\rho_{nuclear}$) on a double grid; OUT.rho\_EpN.fit ($\rho_{fit}$); OUT.Coulomb\_EpN (the Coulomb potential of $\rho_{el}-\rho_{nuclear}$, subject to the $exp(-(q*q2w)^2/4)$ factor; OUT.Coulomb\_residual (the COulomb potential of $rho_{res}=(\rho_{el}-\rho_{nuclear})-\rho_{fit}$ subject to the $exp(-(q*q2w)^2/4)$ factor. Note, these quantitites are double grid ($2n_1\times 2n_2\times 2n_3$) quantities for Hirshfeld partitioning usage. iout=1 can be expensive.
+
+It usually only used for JOB=SCF calculation, and it is can be used to generate OUT.rho\_EpN to fit the funcq\_atom.fit using vion\_coulomb\_fit.f90.
+
+
+### ATOMIC\_ORBITAL\_IATOM\_OUT
+
+|Tag|ATOMIC\_ORBITAL\_IATOM\_OUT|
+| --- | --- |
+|**Format**|ATOMIC\_ORBITAL\_IATOM\_OUT = atomic\_orb\_iatom\_i, atomic\_orb\_iatom\_e|
+|**Default**|NO DEFAULT|
+
+ATOMIC\_ORBITAL\_IATOM\_OUT contains two parameters atomic\_orb\_iatom\_i and atomic\_orb\_iatom\_e which decide the atom index range(the index is from the IN.ATOM configuration file) for JOB=ATOMIC\_ORB.
+
+## Corrections \& constraints tags
+
+### VDW
+
+|Tag|VDW|
+| --- | --- |
+|**Format**|VDW = NONE / DFT-D2 / DFT-D3 /PAIR|
+|**Default**|VDW = NONE|
+
+This parameter is used to specify the type of Van Der Waals correction.
+
+If use DFT-D2, some variables are optional to be set: LONDON\_S6, LONDON\_C6, LONDON\_RCUT. We use the Grimme’s empirical vdw functional term. It is okay without setting the LONDON parameters.
+
+LONDON\_S6: Global scaling parameter for DFT-D. Default is 0.75.
+
+LONDON\_C6: It is an array its dimension is the number of atomic type. Its format is like this: LONDON\_C6(1) = ..., LONDON\_C6(2) = ... (1),(2) are the atom types, in accordance with IN.PSP1, IN.PSP2. These are the C6 parameters in the Lennard-Jones potential $1/r^6$ term parameter. Only the attractive $1/r^6$ term is included in VDW. The repulsion part is already in the DFT energy. The parameter LONDON\_S6 determines trunction of this term at small r.
+
+The default value is from the Grimme-D2 values. You can refer to the article: S. Grimme, J. Comp. Chem. 27, 1787(2006).
+
+LONDON\_RCUT: The cutoff radius (a.u.) for dispersion interactions calculations. The default is 200.0. For $\left|R1-R2\right|$ larger than this cut-off, the vdW interaction will not be calculated. Note, this default value might be too large.
+
+If use DFT-D3(zero-damping method), some variables are optional to be set: DFTD3\_S6, DFTD3\_RS6, DFTD3\_S18, DFTD3\_RS18, DFTD3\_ALPHA6, DFTD3\_VERSION, DFTD3\_3BODY. For more information about the DFT-D3, one can refer to this paper \cite{dftd3-zero-damping}.
+
+In the D3 correction method, the following vdW-energy expression is used:
+
+$E_{disp} = -\frac{1}{2} \sum\limits_{i=1}^{Natom} \sum\limits_{j=1}^{Natom} \sum\limits_{L}\bigg(f_{d,6}(r_{ij,L})\frac{C_{6ij}}{r_{ij,L}^{6}} + f_{d,8}(R_{ij,L})\frac{C_{8ij}}{r_{ij,L}^{8}} \bigg)$
+
+The dispersion coefficients $C_{6ij}$ are geometry-dependent as they are adjusted on the basis of local geometry (coordination number) around atoms i and j. In the zero-damping method, damping of the following form is used:
+
+$f_{d,n}(r_{ij}) = \frac{s_{n}}{1+6(r_{ij}/(s_{R,n}R_{oij}))^{-\alpha_{n}}}$
+
+where $R_{oij} = \sqrt{\frac{C_{8ij}}{C_{6ij}}}$, the parameters $s_{R,8}$ are normally 1. Respectively, the $s_{6}, s_{8}, s_{R,6}, \alpha_{6}$ are adjustable parameters whose values depend on the choice of exchange-correlation functional. Note the default parameter is tested for PBE.
+
+DFTD3\_VERSION The parameter for zero-damping DFT-D3 method is 3.
+
+DFTD3\_3BODY The parameter controlling whether considering the three body term in DFT-D3 correction method. The default is T (considering). If not considering the term, setting DFTD3\_3BODY = F.
+
+DFTD3\_CUTOFF The cutoff radius (a.u.) for pair interactions in real space. Default is 94.868 bohr.
+
+DFTD3\_CUTOFF\_CN The cutoff radius (a.u.) for coordination number in real space. Default is 40.0 bohr.
+
+VDW=PAIR In that case, the file IN.VDWPAIR need to provided. This is a general user provided pair potential in a numerical form, which has the following format:
+
+```bash
+1001, 3, 8.0       ! nr, n_pair, r_cut(angstrom)
+31 31 33           ! iatom_1 (npair)
+33 31 33           ! iatom_2 (npair)
+0.00,  p1,  p2,  p3  ! r, pot(pair1), pot(pair2), pot(pair3) (eV)
+...
+r,   p1, p2, p3       ! The nr-th line for p1,p2,p3
+```
