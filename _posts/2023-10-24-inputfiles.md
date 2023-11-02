@@ -2532,3 +2532,564 @@ VDW=PAIR In that case, the file IN.VDWPAIR need to provided. This is a general u
 ...
 r,   p1, p2, p3       ! The nr-th line for p1,p2,p3
 ```
+
+### COULOMB
+
+|Tag|COULOMB|
+| --- | --- |
+|**Format**|COULOMB = 0 / 1, X1, X2, X3 / 11, X1 / 12, X2 / 13, X3|
+|**Default**|COULOMB = 0|
+
+Control the Poisson equation solution (for the Coulomb interaction).
+
+We provide special ways to calculate the Coulomb potential (also called Hartree potential) of the charge density $\rho(r)$ during the SCF calculation. This could be particularly helpful for isolated system calculation, or for slab calculation. This is to avoid electrostatic image interaction for isolated systems, or the dipole moment effect for neutral slab calculations.
+
+|COULOMB|Description|
+| --- | --- |
+|0|the periodic boundary condition, the default.|
+|1, X1, X2, X3|the isolated cluster boundary condition. It can avoid the image interaction in this calculation. The X1, X2, X3 (value: 0~1) are the fractional coordination values in the unit cell edge vectors 1, 2, 3, used to cut a box for this special Coulomb solution. In the other word, the center of the box is at: (X1+0.5, X2+0.5, X3+0.5).|
+|11, X1|A slab calculation along the first direction, with the cut at X1. This can avoid the dipole moment interaction between slabs. Note, this method only works for neutral system. For charged slab system, the energy is infinite for an isolated slab. In that case, please just use COULOMB=0.|
+|12, X2|A slab calculation along the second direction with the cut at X2. Only for neutral system.|
+|13, X3|A slab calculation along the third direction with the cut at X3. Only for neutral system.|
+
+### LDAU\_PSP
+
+|Tag|LDAU\_PSP|
+| --- | --- |
+|**Format**|LDAU\_PSP1 = LDAU\_L(1), Hubbard\_U(1) (optional Hubbard\_U2(1))|
+||LDAU\_PSP2 = LDAU\_L(2), Hubbard\_U(2) (optional Hubbard\_U2(2))|
+||...|
+|**Default**|LDAU\_PSP1 = -1|
+||LDAU\_PSP2 = -1|
+||...|
+
+If this parameter is set, LDA+U method will be used. When using LDA+U method, one must specify, for each element(i), the atomic orbit to add U, and the value of U.
+
+Note the (i) should correspond to the IN.PSP(i) for the pseudopotential input.
+
+**LDAU\_L(i) = -1/0/1/2/3**, 0/1/2/3 means adding a U term to the s/p/d/f orbital. -1 means not to use LDA+U.
+
+**HUBBARD\_U(i)**: the U parameter ($eV$) for species element types i, the default value is 0.0. If HUBBARD\_U2(i) is also provided, then the first number is for spin up component, the second number is for spin down component. They can be different. If the second number is not provided, then the spin up and down U parameters will be the same.
+
+Note, there are cases where the same atom type, say Co, needs to use different U parameter depending on its local environment and valence state (e.g., Co$^{3+}$ and Co$^{2+}$). In such case, one can change the atom number of Co in the atom.config file, say, one is 27, another is 127. Also, one add another Co pseudopotential Co2.xxx.upf, and in Co2.xxx.upf, change its atomic number from 27 to 127. Now, one can add different U for this new 127 Co type.
+
+Note, the LDA+U calculation is done by the following Hamiltonian:
+
+$$ H = H_{LDA} + \sum_{I,\sigma} {U_{I,\sigma}\over 2} Tr[n^{I,\sigma}(I-n^{I,\sigma})] $$
+
+here I denote the atomic site, and $\sigma$ is for the spin, and $n^{I,\sigma}(m1,m2)$ is an occupation matrix for atomic orbital $\phi_m$ as:
+
+$$n^{I,\sigma}(m1,m2) = \sum_j <\psi_{j,\sigma} |\phi^I_{m1}> < \phi^I_{m2}|\psi_{j,\sigma}> occ(j,\sigma) $$
+
+Here $\psi_{j,\sigma}$ is the Kohn-Sham orbital for spin $\sigma$ and $occ(j,\sigma)$ is its occupation. In above $U_{I,\sigma}$ is provided by the LDAU\_PSP1 lines.
+
+However, we can also add another term, which is:
+
+$$ H = H_{LDA} + \sum_{I,\sigma} {U_{I,\sigma}\over 2} Tr[n^{I,\sigma}(I-n^{I,\sigma})] + \sum_{I,\sigma} \lambda_{I,\sigma} Tr[n^{L,\sigma}] $$
+
+The parameters $\lambda_{I,\sigma}$ are provided in a special section LDAU\_lambda in the atom.config file:
+
+```bash
+LDAU_lambda
+    27  0.5  0.5   ! iatom, lambda_up, lambda_dn
+    27  0.0  0.0
+    ...........
+    27  0.0  0.0   ! must have natom lines
+```
+
+Note, in this LDAU\_lambda section in atom.config, even if not all atoms have LDA+U, you must provide natom (all atom) lines for every atom. For those atoms which do not has LDA+U (determined by the LDAU\_PSPx lines), their corresponding lambda will not be used. So, if you want to use lambda, you must set the LDAU\_PSPx line for that atom type. You can set a very small U parameter for that atom type to reduce the first LDAU term in above H formula.
+
+In the LDAU calculation, we will have output: OUT.LDAU\_NS, which writes out the $n^{I,\sigma}$ matrix for each atoms which has the LDAU\_PSPx line. One can use this $n^{I,\sigma}$ and $\lambda_{I,\sigma}$ to calculate U with the linear-response method (please check the corresponding PWmat module).
+
+
+### LDAU\_RCUT\_PSP
+
+|Tag|LDAU\_RCUT\_PSP|
+| --- | --- |
+|**Format**|LDAU\_RCUT\_PSP1= rcutu1|
+||LDAU\_RCUT\_PSP2= rcutu2|
+||...|
+
+The Rcut of each element type for the LDA+U calculation for the nonlocal projector. The unit is in Bohr, not Amgstron. This is like the IN.PSP\_RCUTi, but instead of for the full atomic wave function, it is for the nonlocal projector. Note, usually, these rcutui should be bigger than rcuti. If no explicit input for LDAU\_RCUT\_PSPi is provided, the default value of 6 Bohr is used (which is rather large). Note, for LDA+U calculation, it might be necessary to use a large rcutui, e.g., 6, to get a fully converged and smooth force (e.g., for better RELAX convergence).  However, if Ecut2 is very large, then a slightly smaller rcuti can be used.
+
+### STRESS\_CORR
+
+|Tag|STRESS\_CORR|
+| --- | --- |
+|**Format**|STRESS\_CORR = $num\_pw_1,energy_1,num\_pw_2,energy_2$|
+|**Default**|NO DEFAULT|
+
+As we know, the number of plane wavefunction has respond to the size of the lattice, i.e. different lattice will give different number of plane wavefunctions in the same cutoff. When running cell relaxation, the lattice will change. Correspondingly, the number of plane wavefunctions should also change. However, the change of the plane wavefunctions will disturb the procedure of the relaxation. As a result, in DFT calculations, we keep the number of plane wavefunctions all the same. In order to overcome the problem in cell relaxation, we implement an stress correction. One can refer to the paper \cite{stress1} for more details.
+
+The steps to carry out the stress correction: Before running the cell relaxation, you should do two SCF calculations with different cutoff. Each calculation will give the $num\_pw$ (See ``Weighted average num\_of\_PW for all kpoint'' in REPORT), the $energy$ (See ``E\_tot'' in REPORT). Then continue doing the cell relaxation with these parameters setting STRESS\_CORR.
+
+>
+>**WARNING**: The two cutoffs should be close enough(within difference of 1~2 ryd ), otherwise the stress correction will not work.
+{: .block-warning}
+
+### FIX\_FERMI
+
+|Tag|FIX\_FERMI|
+| --- | --- |
+|**Format**|FIX\_FERMI = T/F, E\_Fermi, mix\_Q, drho\_pulay|
+|**Default**|FIX\_FERMI = F|
+
+This control indicates whether to use fix Fermi energy (fix electrode potential) calculation. The default is F (use fixed total charge). Note, for T, this is usually used together with IN.SOLVENT=T, and with POISSON\_BOLTZMANN = T (for Poisson-Boltzmann screening) in the IN.SOLVENT file for electrochemistry grand cannonical calculations.
+
+The Poisson-Boltzmann screening is used, because in that case, the potential at far away place is defined as zero, so the absolute Fermi energy is well defined. This option should be used with care. The E\_Fermi is the Fermi energy in the unit of eV (usually is negative). Note, in this case, the total number of electron NUM\_ELECTRON will be adjusted automatically, and its input value will only be used as an initial value. mix\_Q is a charge mixing parameter for the total charge. Small value will be more stable, but slower. Suggest to try 0.1. The drho\_pulay is the value for charge density selfconsistent error drho before to turn on the pulay charge mixing. The pulay should not be used at the beginnning, that will cause instability. Suggest to try drho\_pulay at 0.06. Unfortunately, one might has to adjust mix\_Q, drho\_pulay for better convergence and speed. Also, one might increase the smearing of Fermi-Dirac occupation function (in the line of SCF\_ITER0) to make the calculation stable (e.g., 0.25 eV). Besides, one usually only do a JOB=SCF calculation, with FIX\_FERMI=T, instead of doing RELAX. For relaxation, one can first do a SCF with FIX\_FERMI=T, then do RELAX with FIX\_FERMI=F, but use the total charge output (reported in REPORT) as NUM\_ELECTRON to do a RELAX calculation. One can iterate this loop.
+
+### CONSTRAINT\_MAG
+
+|Tag|CONSTRAINT\_MAG|
+| --- | --- |
+|**Format**|CONSTRAINT\_MAG = 0 / 1|
+|**Default**|CONSTRAINT\_MAG = 0|
+
+This input line is used to put constraint on magnetic moment at each atom for spin=2 calculations. If CONSTRAINT\_MAG=1, this will be turned on, if CONSTRAINT\_MAG=0, this will not be used. Default is CONSTRAINT\_MAG=0. Currently, it only works for spin=2. This is to add an energy penalty term:
+
+$$\sum_{iatom} alpha\_mag(iatom) (M(iatom)-M_{input}(iatom))^2$$
+
+in the total energy expression. Note, M(iatom) is the magnetic moment calculated from spin up and down charge density using Hirshfield method, much like in the CHARGE\_DECOMP. M\_{input}(iatom) are the input magnetic moment in atom.config file, under a section name: CONSTRAINT\_MAG. alpha\_mag(iatom) is also input from the atom.config from that CONSTRAINT\_MAG section. Note, if this section is not provided in atom.config, the default value for M\_{input}(iatom) is zero, and alpha\_mag(iatom) is also zero. The unit of alpha\_mag is in eV.
+
+Alpha\_mag should not be set to be too large. Otherwise the SCF iteration will be difficult to converge. One recommended alpha\_mag is 0.01 eV. One can also set different alpha\_mag for different atoms. Also, note that one can use the above additional energy to add an effective magnetic field H at each atom (with different amplitude etc). To do that, one can use a large M\_{input}(iatom) in the direction one wants, in the mean time, uses a very small alpha\_mag(iatom) which is proportional to 1/M\_{input}(iatom). That will provide an effective H field on each atom.
+
+### SPIN222\_MAGDIR\_STEPFIX
+
+|Tag|SPIN222\_MAGDIR\_STEPFIX|
+| --- | --- |
+|**Format**|SPIN222\_MAGDIR\_STEPFIX = N|
+|**Default**|SPIN222\_MAGDIR\_STEPFIX = 0 (for XCFUNCTIONAL = LDA)|
+||SPIN222\_MAGDIR\_STEPFIX = 1000 (for everything else)|
+
+This input line is used to fix the direction of magnetic moment after SPIN222\_MAGDIR\_STEPFIX self-consistent iterations. If SPIN222\_MAGDIR\_STEPFIX = 30, it means that after 30 self-consistent interations, the direction of magnetic moment will be fixed. But for XCFUNCTIONAL = LDA, default SPIN222\_MAGDIR\_STEPFIX is 0, the direction of magnetic moment will not be fixed. If you set SPIN222\_MAGDIR\_STEPFIX = 1, initial direction of magnetic moment will be fixed, and will not change with self-consistent interations. Please note that SPIN222\_MAGDIR\_STEPFIX is only used for SPIN = 222.
+
+### E\_FINITE
+
+|Tag|E\_FINITE|
+| --- | --- |
+|**Format**|E\_FINITE = T / F  Ex Ey Ez|
+|**Default**|E\_FINITE = F 0 0 0|
+
+This parameter is used to set the homogeneous electric field in the electric enthalpy functional. If the first parameter is T, it will compute the self-consistent response to finite electric fields. Ex,Ey,Ez in unit eV/Angstrom.
+
+In the output of screen, one can search for "Pel", the electronic dipole moment, in unit e*Angstrom.The first "Pel" is the result with fields turned off. The second "Pel" is the result with fields turned on.
+
+An example of AlAs, the file atom.config:
+
+```bash
+ 2
+ LATTICE
+ 4.0543775558         0.0000000000         0.0000000000
+ 2.0271887779         3.5111939599         0.0000000000
+ 2.0271887779         1.1703979866         3.3103854121
+ POSITION
+ 13 0.000000000       0.000000000         0.000000000  1 1 1
+ 33 0.749999998       0.750000011         0.749999994  1 1 1
+```
+
+the file etot.input:
+
+```bash
+4  1
+JOB = scf
+IN.PSP1 = Al.SG15.PBE.UPF
+IN.PSP2 = As.SG15.PBE.UPF
+IN.ATOM = atom.config
+
+Ecut    = 50
+Ecut2   = 200
+MP_N123 = 4 4 4  0 0 0 2
+
+e_finite  = T 0.00 0.00 0.001
+
+precision = double
+e_error   = 0.0
+wg_error  = 0.0
+rho_error = 1.d-6
+
+out.force = t
+ 
+```
+
+The OUT.FORCE=T is needed to calculate born effective charge, for accurate forces, Ecut2=4*Ecut is recommended. Kpoints are set by MP\_N123 without symmetry(E\_FINITE=T can not use symmetry). Kpoints grid should be large enough to get converged results. 
+    
+PRECISION=DOUBLE is set for more accurate results, much more here we set e\_error=0, wg\_error=0, rho\_error=1.d-6 to ensure the wavefunctions in good convergency.
+
+For systems with small gap, one need to use smaller FremidE, also need to use much smaller strength of field in case of no local minimum, like following example, the file atom.config:
+      
+```bash
+2
+LATTICE
+     4.06599283     0.00000000     0.00000000
+     2.03299642     3.52125308     0.00000000
+     2.03299642     1.17375103     3.31986925
+POSITION
+ 31     0.00000000     0.00000000     0.00000000 1 1 1
+ 33     0.25000000     0.24999999     0.25000000 1 1 1
+
+```
+
+the file etot.input:
+
+```bash
+4  1
+JOB = scf
+IN.PSP1 = Ga.SG15.PBE.UPF
+IN.PSP2 = As.SG15.PBE.UPF
+IN.ATOM = atom.config
+
+Ecut    = 50
+Ecut2   = 200
+# for correct and converged results, maybe need to use more kpoints
+MP_N123 = 4 4 4  0 0 0 2   
+e_finite  = T 0.00 0.00 0.0001   
+
+precision = double
+e_error   = 0.0
+wg_error  = 0.0
+rho_error = 1.d-6
+
+out.force = t
+
+#use FermidE=0.001eV
+SCF_ITER0_1 =    6   4    3    0.0000     0.0010    1   
+SCF_ITER0_2 =   94   4    3    1.0000     0.0010    1 
+
+```
+
+### RVV10\_DETAIL
+
+|Tag|RVV10\_DETAIL|
+| --- | --- |
+|**Format**|RVV10\_DETAIL = b, c|
+|**Default**|RVV10\_DETAIL = 6.3, 0.0093|
+
+The current code implemented the RVV10 dispersion interaction (G. Roman-Perez, J.M. Soler, Phys. Rev. Lett. 103, 096102 (2009); R. Sabatini, T. Gorni, S. de Gironcoli, Phys. Rev. B, 87, 041108 (2013)). The RVV10 use a nonlocal integral of charge densities at different points, r, r' derived from RPA formalism. The kernel of this integral is  
+
+$$\phi^{VV10}(r,r')=-{3e^4\over 2m^2} {1\over g g' (g+g')}$$
+
+Here $g=\omega_0(r)(r-r')^2+k(r)$, $g'=\omega_0(r')(r-r')^2+k(r')$. Furthermore, $\omega_0(r)=\sqrt{\omega_g^2(r)+\omega_p^2(r)/3}$. $\omega_p^2(r)=4\pi{n(r)}e^2/m$ is the plasma frequency.
+
+$\omega_g^2(r)=c(\hbar^2/m^2)|\frac{\nabla{n(r)}}{n(r)}|^4$ and $k(r)=3 \pi b({n(r)\over9\pi})^{1\over 6}$, Here b and c are parameters. For default, b=6.3, c=0.0093. But one can use RVV10\_DETAIL to specify different b and c values. This is only used when XCFUNCTIONAL contains RVV10.
+
+## I/O tags
+
+### IN.ATOM
+
+|Tag|IN.ATOM|
+| --- | --- |
+|**Format**|IN.ATOM = atom.config|
+|**Default**|NO DEFAULT|
+
+IN.ATOM is used to read the atomic positions file, this file contains the lattice geometry and ionic positions, optional tags -- force, velocity, magnetic, constraint\_mag, magnetic\_xyz, langevin\_atomfact\_tg, stress\_mask, et al. Its specification is described in the section \ref{inputfile:atomconfig} of this manual.
+
+### IN.PSP
+
+|Tag|IN.PSP|
+| --- | --- |
+|**Format**|IN.PSP1 = H.NCPP.UPF|
+||IN.PSP2 = C.NCPP.UPF|
+||...|
+|**Default**|NO DEFAULT|
+
+The names of the pseudopotential files. `IN.PSP1' is the first atom type, `IN.PSP2' is the second atom type, and the rest can be deduced by analogy. The order of different element types is arbitrary. Please see section \ref{inputfile:pseudopotential} for a discussion of different pseudopotentials.
+
+### IN.KPT
+
+|Tag|IN.KPT|
+| --- | --- |
+|**Format**|IN.KPT = T / F|
+|**Default**|IN.KPT = F|
+
+IN.KPT = T, PWmat will use the k-points from file `IN.KPT` which contains the k-points and their weights. %The IN.KPT can be generated (together with IN.SYMM) by running `check.x` with information from variable MP\_N123. Note, IN.KPT, IN.SYMM usually work together. IN.KPT has a higher priority than MP\_N123. If IN.KPT = F, PWmat will not use the file `IN.KPT`. PWmat will always output koints in `OUT.KPT` file. Please check the IN.KPT(OUT.KPT) subsession for more detail format about this file.
+
+### IN.SYMM
+
+|Tag|IN.SYMM|
+| --- | --- |
+|**Format**|IN.SYMM = T / F|
+|**Default**|IN.SYMM = F|
+
+IN.SYMM = T, PWmat will use the file `IN.SYMM` (the name is fixed) to perform symmetry operations. The PWmat supports space group symmetry for crystals. `IN.SYMM` should contain space group symmetry operations. %`IN.SYMM` is usually generated (together with IN.KPT) by running `check.x` (which will also check whether the IN.SYMM exists if IN.SYMM=T). Usually, symmetry can be generated automatically by using MP\_N123 line. However, one can also copy over the previous OUT.SYMM into IN.SYMM for explicit input (e.g., one can even delete some symmetry operations). The IN.SYMM usually should work together with IN.KPT (for the reduced k-points). Note, if both IN.SYMM=T, IN.KPT=F are specified, and also MP\_N123 are also specified, PWmat will generate Kpoints using the symmetry operations provided in file `IN.SYMM`. If IN.SYMM=T, IN.KPT=T and also MP\_N123 are also specified, the IN.KPT=T has a higher priority, MP\_N123 will not be used. If IN.SYMM = F, PWmat will not use file `IN.SYMM`, This is the default value. PWmat will always output symmetry operations in `OUT.SYMM` file. Please check the IN.SYMM(OUT.SYMM) subsession for more detail format about this file.
+
+
+### IN.OCC
+
+|Tag|IN.OCC|
+| --- | --- |
+|**Format**|IN.OCC = T / F|
+|**Default**|IN.OCC = F|
+
+Related items: PROJ3\_DETAIL, IN.iproj3\_CC\_2spin, IN.OCC\_T, IN.CC. In all these options, the PWmat will try to use special ways to determine the occupation of wave functions, or eigen states, instead of using the conventional Fermi-Dirac distribution from the SCF\_ITER0\_1, SCF\_ITER0\_2, SCF\_ITER1\_1 lines. Note, in general, not necessarily the eigen states will be occupied, instead an linear combination of the eigen states can be occupied. These options will be particularly useful for either constraint DFT (with some excited  electron states, or empty hole states) SCF or RELAX jobs, or TDDFT simulations. For example, it can be used to prepare some special initial excited state in TDDFT.
+
+In this option, PWmat will read a file called `IN.OCC`. This is to specify the occupation for each Kohn-Sham orbital $\phi_j$ for a constraint DFT calculation. 
+
+>
+>**WARNING**: `IN.OCC=T` is equivalent to `IN.OCC=T,0`
+{: .block-warning}
+
+In the following, we will use $\phi_i$ to denote the adiabatic eigen state of the Kohn-Sham Equation: $H \phi_i = \epsilon_i \phi_i$. In the meantime, we can input another set of wave function: $\{\psi_j\}$, e.g, through the IN.WG=T option. This $\{\psi_j\}$ is a bit like the time evolving wave functions in TDDFT, and they can be used to help the
+occupation of states to generate the charge density.
+
+The following are the different options for iproj.
+
+**iproj=0**: (IN.OCC = T, or IN.OCC = T, 0): The SCF calculation charge density will be generated as:  $\rho(r)= \sum_i o(i) |\phi_i(r)|^2$, and the occupation number $o(i)$ will be input from the IN.OCC file (see the explanation below). Note, for iproj=0, the o(i) is fixed (for which state is which). For example, if the third state in IN.OCC is empty (o(3)=0), then during the SCF calculation, or atomic relaxation, it is always the third adiabatic state which is unoccupied. This is okay for simple cases, but for more complicated cases, it can cause problem, since during the SCF iteration, or atomic relaxation, the order (which state is the third) according to the adiabatic state eigen energies can often change (re-ordered). As a result, the third state might not be the physical state you like to keep it empty. One option in that case is to use iproj=1.
+
+**iproj=1**: In this option, the index of which state is which is determined by a projection between the adiabatic eigen state $\phi_i$ and the input state $\psi_j$ from IN.WG. So, in order to use this, one has to have IN.WG. More specifically, map(i) equals the j which maximizes $|<\phi_i|\psi_j>|^2$. Basically, this identifies which $\phi_i$ is the input $\psi_{map(i)}$. As a result, the charge density is generated as: $\rho(r)= \sum_i o(map(i)) |\phi_i(r)|^2$. Note, { $\psi_j$ } is input from IN.WG. Once again, o(j) is input from IN.OCC, which has the following form (for iproj=0,1,3):
+
+```bash
+o1,o2,o3,.....o_mx        ! for kpt=1
+o1,o2,o3,.....o_mx        ! for kpt=2
+........
+o1,o2,o3,.....o_mx        ! for kpt=nkpt
+```
+
+Here mx is the num\_band, and nkpt is the number of reduced kpoint. Thus, in each line, there are mx number, and there are nkpt line. Note, one can write something like: 4*1,2*0 to replace: 1,1,1,1,0,0. Note, o(j,kpt) is the occupation number discussed above (it must be between 0 and 1, even for SPIN=1, should not be 2). Note, the full occupation is o(j,kpt)=1. So, if SPIN=1, o(j,kpt)=1 means this orbital will occupy 2 electron, and o(j,kpt)=0.5 means this orbital will occupy 1 electron.
+
+If SPIN=2, then one has also to provide an file: IN.OCC\_2, which has the same format, but specify the spin down component occupation. In that case, o(j,kpt)=1 means this orbital (up or down spin) will occupy one electron, and o(j,kpt)=0 means
+this orbital of this spin will occupy zero electron.
+
+**iproj=2 (or 22)**:  in the above case of iproj=0 and 1, the Fermi-Dirac distribution function will be ignored (not used, or it is like Fermi-Dirac=0). But even for iproj=1, there could be cases where it is difficult to identify which $\phi_i$ is $\psi_j$, for example, if several states have the similar amplitude overlaps (e.g., around 0.3-0.5). In that case, even if we select and occupy one $\phi_i$, the results might not be good either. What we really need is to construct one $\psi_j$-like wave function $\psi'_j$ from a linear combination of $\phi_i$, then occupy $\psi'_j$. More specifically, we can have: $\psi'_j = \sum_i f(i,j) <\phi_i|\psi_j> \phi_i$. Here f(i,j) is a selection and orthonormalization factor. For iproj=22, there is no selection, and f(i,j) is just for orthonormalization (among all the $\{ \psi'_j \}$). For iproj=2, a selection weight factor is used for different i. More specifically, $f(i,j)=exp(-((1-x)/0.7)^6)$, where $x=|<\phi_i|\psi_j>|^2$. Thus, effectively, it only select the $\phi_i$ states with overlap larger than 0.3. After this selection factor, it is orthonormalized. The idea here is only to select a few $\phi_i$, and use their linear combination to construct a state resemble that of the original $\psi_j$ state, but not to completely reconstruct the $\psi_j$ state. This will be useful to deal with the case where two states anticross each other, so the $\phi_i$ character has changed, but a linear combination can reconstruct the original $\psi_j$.
+
+In terms of occupation, it uses a different strategy than iproj=0,1,3. For iproj=2, the Fermi-Dirac distribution is still used, then on top of it, an exception for some band is used to add or substract some states. The idea is to use this to add one excited electron or subtract one hole  (on $\psi_j$) (called exception states) from the otherwise Fermi-Dirac calculation. Note, when decide the Fermi energy, a total charge of NUM\_ELECTRON - dcharge is used, and dcharge is the charge from $\psi_j$ as specified in the IN.OCC to be explained below. So, the actual total charge is NUM\_ELECTRON. Also note, not only the charge density of $\psi_j$ is contributed, also its kinetic and nonlocal potential part of the energy. The total charge density can be specified as: $\rho(r)=\rho_{FD}(r)+ \sum_j o(j) |\psi'_j(r)|^2$, here $\rho_{FD}(r)$ is the Fermi-Dirac charge density, and o(j) is the occupation from the IN.OCC, which has  the following form in the case of iproj=2(or 22):
+
+```bash
+o1,o2,o3,.....o_mx        ! for kpt=1
+o1,o2,o3,.....o_mx        ! for kpt=2
+........
+o1,o2,o3,.....o_mx        ! for kpt=nkpt
+-------- (above nkpt lines are not used, this dashed line must be here)
+nump                          ! The number of exception states
+iband(1,1),od(1,1)            ! for indx=1,   kpt=1
+iband(2,1),od(2,1)            ! for indx=2,   kpt=1
+......
+iband(nump,1),od(nump,1)      ! for indx=nump,kpt=1
+iband(1,2),od(1,2)            ! for indx=1,   kpt=2
+iband(2,2),od(2,2)            ! for indx=2,   kpt=2
+......
+iband(nump,2),od(nump,2)      ! for indx=nump,kpt=2
+......                        ! repeat for different kpoint
+......
+iband(1,nkpt),od(1,nkpt)            ! for indx=1,   kpt=nkpt
+iband(2,nkpt),od(2,nkpt)            ! for indx=2,   kpt=nkpt
+......
+iband(nump,nkpt),od(nump,nkpt)      ! for indx=nump,kpt=nkpt
+
+```
+
+
+Note, in this file, there must be nump\*nkpt lines after the first nump+1 lines. The nump is the number of exception states in each kpoints. Each of the nump\*nkpt line should have two numbers. The first number is the band index, the second number is an occupation (can be positive, or negative (hole)).
+
+Note, for SPIN=2, one needs to have the same format for IN.OCC\_2.
+
+Note, iproj=0,1,2 are often used for both SCF calculation, as well as RELAX. iproj=0 is also often used
+for TDDFT calculation.
+
+For the cases of iproj=1 for  RELAX, the $\psi_{j}$ for next RELAX step is updated from the $\phi_{map(j)}$ from the previous relaxation step. For the case of iproj=2 for RELAX, $\psi_j$ for next RELAX step is replaced with $\psi'_j$ from previous RELAX step. Doing this will allow one to relax the system even if there is a state crossing for a hole state (or electron state), while tracking and keeping the same hole or excited electron.
+
+The iproj=2 is usually more stable than iproj=1 for both SCF and RELAX. So, it should be used if iproj=0 and 1 are unstable, and do not converge.
+
+**iproj=3 (or 33)**:  this is used for SCF or TDDFT calculations, not for RELAX. In iproj=2, the exception is used to calculate the charge density. It is mostly designed to deal with RELAX, and conceptually, we like to eventually make the $\psi_j$ the adiabatic eigen states. There are cases where we are interested in occupy specific input wave function $\psi_j$, but they are not the adiabatic eigen states $\phi_i$. More importantly, the occupied state $\psi'_j$ should be completely represented by $\phi_i$. So, the occupied state is not the exact $\psi_j$ input from IN.WG. If the fixed $\psi_j$ is to be occupied, one can use JOB=WKM. Here, we will occupy $\psi'_j = \sum_i f(i) <\phi_i|\psi_j> \phi_i$, then orthonormalized following this formula. Thus, $\rho(r)=\sum_j o(j) |\psi'_j(r)|^2$,  here o(j) is input from IN.OCC. In the formula, f(i) is used to provide some possible truncation (so there is no high energy $\phi_i$ components for $\psi'_j$. This can be provided by the following input line:
+
+```bash
+PROJ3\_DETAIL = Ecut\_proj3, dEcut\_proj3  (in unit of eV)
+```
+
+Then: $f(i)=1/(exp((\epsilon(i)-Ecut\_proj3)/dEcut\_proj3)+1)$
+
+If the PROJ3\_DETAIL does not exist, then f(i)=1
+
+Also, in the IN.OCC, if one o(j) is negative, then $\psi'_j=\phi_j$, and $o(j)=|o(j)|$.
+
+This can be used to provide the initial state for TDDFT calculation (can be used together with JOB=TDDFT). So, the wanted initial TDDFT $\psi_j(t=0)$ wave function (whatever wave function, not necessarily eigen states) can be input from IN.WG. But for our TDDFT implementation, we need to gaurantee the $\psi_j$ can be represented by the set of eigen states $\{ \phi_i \}$. This IN.OCC and the first step in TDDFT (or the SCF calculation) can just gaurantee this through a self-consistent iteration. Note, $\psi_j$ can be some localized state, or some ionic states for the ion far away from a colliding surface. One can use other means to pre-construct IN.WG. Note, this iproj=3 will automatically output a file OUT.iproj3\_CC\_2spin, it contains the coefficient: $CC(i,j)=<\phi_i|\psi_j>$ with orthonormalization. For iproj=33, this OUT.iproj3\_CC\_2spin must be copied into IN.iproj3\_CC\_2spin, and inside etot.input, one has to place one line: IN.iproj3\_CC\_2spin=T. In this case, the IN.WG input is actually the eigen state $\phi_i$ instead of $\psi_j$, and $\psi_j$ is constructed as: $\psi_j=\sum_i CC(i,j) \phi_i$. In this way, one can input both the eigen state and the $\psi_j$, thus continue a iproj=3 calculation.
+
+**Comparison with other options**: Note, for TDDFT calculation, one can compare IN.OCC=T,3 calculation with IN.OCC\_T=T calculation. In IN.OCC\_T, the occupation of each state o(j) can be changed with time, specified inside IN.OCC\_T. That is a powerful tool to actually change the occupation (e.g., to describe one electron gradually disappear due to some other physical process). It can also be used to prepare the initial state in a TDDFT calculation, e.g, quickly remove one state. But this is less general than IN.OCC=T,3, it can also has some stability issues. Also note, if one very quickly remove one electron through IN.OCC\_T, the physical meaning might be different from the initial condition propered using IN.OCC=T,0. In IN.OCC=T,0, the initial condition is in a equilibirium condition, but that is not the case for IN.OCC\_T calculation.
+
+Lastly, one can also compare IN.OCC=T,3 with IN.CC. IN.CC can also be used to prepare a mixing state as the initial state for TDDFT calculation. It is easy to construct the initial wave function, but it is less general, and less powerful than the IN.OCC=T,3 procedure.
+
+### IN.OCC\_T
+
+|Tag|IN.OCC\_T|
+| --- | --- |
+|**Format**|IN.OCC\_T = T|
+|**Default**|IN.OCC\_T = F|
+
+If IN.OCC_T = T, PWmat will read in file `IN.OCC\_T'  (and `IN.OCC\_T\_2' if spin=2), and it will ignore the imth\_Fermi  flag In the SCF\_ITERx\_x line.
+
+### IN.NONSCF
+
+|Tag|IN.NONSCF|
+| --- | --- |
+|**Format**|IN.NONSCF = T/F|
+|**Default**|IN.NONSCF = F|
+
+This parameter is used to set optional NONSCF parameter in file IN.NONSCF.
+
+### IN.RELAXOPT
+
+|Tag|IN.RELAXOPT|
+| --- | --- |
+|**Format**|IN.RELAXOPT = T/F|
+|**Default**|IN.RELAXOPT = F|
+
+This parameter is used to set optional RELAX parameter in file IN.RELAXOPT.
+
+### IN.MDOPT
+
+|Tag|IN.MDOPT|
+| --- | --- |
+|**Format**|IN.MDOPT = T/F|
+|**Default**|IN.MDOPT = F|
+
+This parameter is used to set optional MD parameter in file IN.MDOPT.
+    
+If the method of MD is 2,3,4 or 5, one can use the file IN.MDOPT to set detailed parameters by setting IN.MDOPT=T. See more in \ref{otherinput:in.mdopt}.
+
+### IN.TDDFTOPT
+
+|Tag|IN.TDDFTOPT|
+| --- | --- |
+|**Format**|IN.TDDFTOPT = T/F|
+|**Default**|IN.TDDFTOPT = F|
+
+This parameter is used to set optional TDDFT parameter in file IN.TDDFTOPT.
+
+### IN.EXT\_FORCE
+
+|Tag|IN.EXT\_FORCE|
+| --- | --- |
+|**Format**|IN.EXT\_FORCE= T / F|
+|**Default**|IN.EXT\_FORCE = F|
+
+This parameter is used to provide an external force (unit eV/amstrong) for each atom during MD simulation. See more in MD\_DETAIL. If IN.EXT\_FORCE=T, a file IN.EXT\_FORCE will be provided, it has the following format:
+
+```bash
+    natom
+    iatom, fx, fy, fz    ! unit eV/Amstrong
+    .................
+    iatom, fx, fy, fz    ! There will be natom lines
+```
+
+### IN.SOLVENT
+
+|Tag|IN.SOLVENT|
+| --- | --- |
+|**Format**|IN.SOLVENT = T / F|
+|**Default**|IN.SOLVENT = F|
+
+When calculating the energy of a solute molecule in a liquid solvent, e.g., in electric chemistry study, there are two possible approaches. One is to use explicit solvent molecule (e.g., water molecules) and carry out molecular dynamics simulations, another is to use implicit solvent models. The implicit solvent model represents the effect of the solvent with a continuum mediate, mostly includes its effects of electric static polarization. Compared with the explicit solvent molecules and molecular dynamics, the implicit solvent model is much faster. We have followed the work of self-consistent continuum solvation (SCCS) model \cite{solvent1}, as well as similar formalism in Ref.\cite{solvent2}. In quantum chemistry, this is also called: polarizable continuum model (PCM). We have also implemented the linearized Poisson-Boltzmann screening for the effects of free ions (salt, or H+, OH- in low or high pH value situations) \cite{solvent3}. These models use a continuum mediate and a space variation dielectric constanr $\epsilon(r)$ to represent the solvation effects, mostly the polarization effects. There are three energy terms: the polarization solvation energy, the cavity energy (the surface tension, or can also be considered as surface van der Waals energy), and volume energy (pressure energy, PV). If Poisson-Boltzmann equation is used to describe the ion screening, there is another term which describes the ion energy within an electric static potential. When the Poisson-Boltzmann equation is used, the absoulte potential zero is defined at the far away place (there is no ambiguity of the absolute potential position). This also allows us to define the absolute potential of the electrode (for example, the standard hydrogen electrod, SHE, potential in water is at -4.42 eV). In this situation, we can use a fixed potential (fixed Fermi energy calculation). This is controlled using Fix\_Fermi = T in etot.input (please see the corresponding item in the manual).
+
+**IN.SOLVENT = T**, will use solvent model. Note, all the other input in etot.input will be the same. In other words, solvent model can be used to do single SCF, RELAX, MD and TDDFT calculations. However, one has to prepare a `IN.SOLVENT` file in the running directory, which control the parameters for the solvent model. See more in \ref{otherinput:in.solvent}.
+
+When IN.SOLVENT=T, after the PWmat run, a OUT.SOLVENT file will be generated which lists all the options used for the solvent model.
+
+
+### IN.A\_FIELD
+
+|Tag|IN.A\_FIELD|
+| --- | --- |
+|**Format**|IN.A\_FIELD= T / F, a\_field1, a\_field2, a\_field3|
+|**Default**|IN.A\_FIELD= F 0.0 0.0 0.0|
+
+>
+>**TIP**: for PWmat version later than 20200824, it has a new format:
+>
+> IN.A\_FIELD\_LIST1= a\_field1, a\_field2, a\_field3 IN.TDDFT\_TIME1
+> IN.A\_FIELD\_LIST2= a\_field1, a\_field2, a\_field3 IN.TDDFT\_TIME2
+> ... 
+> the maximum support is 20 rows. This can be used to add a circularly polarized light.
+> IN.TDDFT\_TIME1,IN.TDDFT\_TIME2... is the name of TDDFT\_TIME file. You need to prepare same number of TDDFT\_TIME files, it has the same format as IN.TDDFT\_TIME,
+>
+>        0 ftddft(0)
+>        1 ftddft(1)
+>        ...
+>        N ftddft(N)
+
+This controls the G-space external potential input for tddft calculation(only used when TDDFT\_SPACE=-1,...).The tddft hamiltonian,
+
+$$
+H=1/2 (-i\nabla_x + a\_field1)^2+1/2(-i\nabla_y+ a\_field2)^2+1/2(-i\nabla_z + a\_field3)^2
+$$
+
+ The values of $a\_field1,2,3$ are all in units of 1/Bohr.
+
+ ### IN.WG
+
+
+|Tag|IN.WG|
+| --- | --- |
+|**Format**|IN.WG = T / F|
+|**Default**|IN.WG = F|
+
+IN.WG = T, PWmat will read in the initial wave functions in G-space from the file `IN.WG` (e.g., from previous calculation, copied over from OUT.WG, but note the node1 from the current calculation must be the same as in the previous calculation to generate OUT.WG). When SPIN = 2, an extra file `IN.WG\_2` will also be read in. Note, IN.WG, OUT.WG can be plotted using utility program `plot\_wg.x`, which can be used to view each wave function.  For people like to see the format of IN.WG, OUT.WG, one can check the plot\_wg.f90 file which is source code of `plot\_wg.x` utility program. If IN.WG = F, the PWmat will start from random wave function.
+
+### IN.RHO
+
+|Tag|IN.RHO|
+| --- | --- |
+|**Format**|IN.RHO = T / F|
+|**Default**|IN.RHO = F|
+
+IN.RHO = T, PWmat will read in the initial charge density from file `IN.RHO`, stored in the real space grid (N1L, N2L, N3L). This can be copied over from OUT.RHO of previous calculation. Note, the node1 in current calculation, and previous calculation to generation OUT.RHO must dividable from one way or the other. Note, if both IN.VR and IN.RHO are set to T, the program will use the read-in potential to start the calculation. If SPIN = 2, PWmat will read an extra file `IN.RHO\_2`. IN.RHO=T is also needed for JOB=POTENTIAL. If SPIN = 22, only a single IN.RHO will be needed. If SPIN = 222, besides IN.RHO, a IN.RHO\_SOM (a complex 2x2 spin matrix density) will be needed. If IN.RHO = F, not input the charge density.
+
+    One can use utility program: convert\_rho.x to plot OUT.RHO or IN.RHO. One can also check convert\_rho.f90 for the format of IN.RHO, OUT.RHO.
+
+### IN.RHO\_ADD
+
+|Tag|IN.RHO\_ADD|
+| --- | --- |
+|**Format**|IN.RHO\_ADD = T / F|
+|**Default**|IN.RHO\_ADD = F|
+
+IN.RHO\_ADD = T, PWmat will read in an additional charge density $\rho_{add}$ from input file: IN.RHO\_ADD, and this $\rho_{add}$ will be added to the total charge density calculated from the wave functions. In another word, $\rho(i)=\sum_i |\psi_i(r)|^2 occ(i) + \rho_{add}(r)$. Note, this $\rho_{add}$ will not be counted as part of NUM\_ELECTRON when determing $occ(i)$. This function can be used for many different algorithms. In particular, JOB=SCFEP is one particular case of this (but please continue to use JOB=SCFEP). Note, one can use the utility file: convert\_wg2rho.f to general IN.RHO\_ADD file from the output wave function file OUT.WG. When spin=2, one also needs to provide an IN.RHO\_ADD\_2 file for spin down additional charge density. If IN.RHO\_ADD = F, no additional charge density is used.
+
+### IN.VR
+
+|Tag|IN.VR|
+| --- | --- |
+|**Format**|IN.VR = T / F|
+|**Default**|IN.VR = F|
+
+IN.VR = T, PWmat will read in the initial potential from file `IN.VR` in real space grid: (N1L, N2L, N3L). Note, if both IN.VR and IN.RHO are set to T, the program will use the read-in potential to start the calculation. The format, and requirement of IN.VR are the same as that for IN.RHO. When SPIN = 2, an extra file `IN.VR\_2` will also be read. When SPIN=22, just a single IN.VR will be read (no IN.VR\_2). When SPIN=222, besides IN.VR, IN.VR\_SOM (complex 2x2 spin matrix potential), and IN.VR\_DELTA (a single real up-down potential) need to be read in. If IN.VR = F, not read in the file.
+
+### IN.VEXT
+
+|Tag|IN.VEXT|
+| --- | --- |
+|**Format**|IN.VEXT = T / F|
+|**Default**|IN.VEXT = F|
+
+IN.VEXT = T, PWmat will read in an external potential from file `IN.VEXT` in real space grid (N1L, N2L, N3L). Both the total energy and forces are calculated using this external potential. This can be useful to calculate the influence of an external potential (e.g., an electric field), for JOB=SCF, RELAX or MD. Note, the IN.VEXT has the same format as that in IN.RHO and IN.VR. Its unit is Hartree. One can try (and check, modify) the utility programs: calculate\_Vext.f90 and gen\_external\_efield.f90 to generate such IN.VEXT. One can also write such IN.VEXT by self-made codes. If IN.VEXT = F, no external potential is used.
+
+### IN.LDAU
+
+|Tag|IN.LDAU|
+| --- | --- |
+|**Format**|IN.LDAU = T / F|
+|**Default**|IN.LDAU = F|
+
+IN.LDAU = T, PWmat will read in the initialization of LDA+U from file `IN.LDAU` (Note this is not the U parameters, instead they are the LDA+U occupation values calculated from JOB=SCF calculation). This setting is only required when JOB=NONSCF.  One needs to copy OUT.LDAU to IN.LDAU after the JOB=SCF. If SPIN = 2, PWmat will read an extra file `IN.LDAU\_2`, also there will be OUT.LDAU\_2 after JOB=SCF. If IN.LDAU = F, not input the initialization of LDA+U.
+
+### OUT.WG
+
+|Tag|OUT.WG|
+| --- | --- |
+|**Format**|OUT.WG = T / F|
+|**Default**|OUT.WG = T|
+
+OUT.WG = T, PWmat will output a file `OUT.WG`, which stores the final wave functions in G-space. When SPIN = 2, an extra file `OUT.WG\_2` will also be output. This is the default value. Use utility program  `plot\_wg.x` to plot the wave functions. More details about `plot\_wg.x`, please refer to PWmat website \url{http://www.pwmat.com/utility-download}.
+
+If OUT.WG = F, will not output the wave function file.
+
+### OUT.RHO
+
+|Tag|OUT.RHO|
+| --- | --- |
+|**Format**|OUT.RHO = T / F|
+|**Default**|OUT.RHO = T|
+
+OUT.RHO = T, PWmat will output a file `OUT.RHO`, the final charge density in real space grid (N1L, N2L, N3L). This is the default value. If SPIN = 2, PWmat will write out an extra file `OUT.RHO\_2`. If SPIN=222, PWmat will also output OUT.RHO\_SOM, a 2x2 complex spin matrix density.
+
+Use utility program `convert\_rho.x` to plot the charge density (unit in e/Bohr$^3$). More details about `convert\_rho.x`, please refer to PWmat website http://www.pwmat.com/utility-download.
+
+If OUT.RHO = F, not output the charge file.
