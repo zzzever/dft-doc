@@ -311,5 +311,5 @@ insert a picture:
 
 |SPIN UP-DN| T*S| Total Energy|
 |:---:|:---:|:---:|
-|![mag](/assets/mag.png)|![ts](/assets/ts.png)|![etot](/assets/etot.png)|
+|![mag](/dft-doc/assets/mag.png)|![ts](/dft-doc/assets/ts.png)|![etot](/dft-doc/assets/etot.png)|
 
