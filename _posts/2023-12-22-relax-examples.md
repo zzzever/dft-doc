@@ -254,17 +254,17 @@ prepare the input file etot.input:
 ```
 4 4 
 
-JOB          = scf 
-IN.ATOM      = final1.config 
+JOB          = relax
+IN.ATOM      = atom.config 
 IN.PSP1      = Li.SG15.PBE.UPF 
 IN.PSP2      = Mn.SG15.PBE.UPF 
 IN.PSP3      = P.SG15.PBE.UPF 
 IN.PSP4      = O.SG15.PBE.UPF 
 
-RELAX_DETAIL = 1 10000 0.005
+RELAX_DETAIL = 1 1000 0.003
 ECUT         = 50 
 ECUT2        = 200
-MP_N123       = 2 1 1 0 0 0 2 
+MP_N123       = 3 2 2 0 0 0 2 
 XCFUNCTIONAL = PBE 
 
 E_ERROR = 0.0
@@ -283,9 +283,10 @@ SCF_ITER1_1 =     20        4    3    1.0000     0.025000    2
 
 run the relax program:
     
-        ```
-        mpi -np 16 PWmat | tee output
-        ```
+```
+mpi -np 16 PWmat | tee output
+```
+
 ## 4. tips for polaron relax
 1. use e\_error = 0.0, the energy covergence is not stable, use the rho\_error to control the convergence of SCF.
 
