@@ -3004,6 +3004,7 @@ When IN.SOLVENT=T, after the PWmat run, a OUT.SOLVENT file will be generated whi
 >        1 ftddft(1)
 >        ...
 >        N ftddft(N)
+{: .block-tip}
 
 This controls the G-space external potential input for tddft calculation(only used when TDDFT\_SPACE=-1,...).The tddft hamiltonian,
 
@@ -3032,7 +3033,7 @@ IN.WG = T, PWmat will read in the initial wave functions in G-space from the fil
 
 IN.RHO = T, PWmat will read in the initial charge density from file `IN.RHO`, stored in the real space grid (N1L, N2L, N3L). This can be copied over from OUT.RHO of previous calculation. Note, the node1 in current calculation, and previous calculation to generation OUT.RHO must dividable from one way or the other. Note, if both IN.VR and IN.RHO are set to T, the program will use the read-in potential to start the calculation. If SPIN = 2, PWmat will read an extra file `IN.RHO\_2`. IN.RHO=T is also needed for JOB=POTENTIAL. If SPIN = 22, only a single IN.RHO will be needed. If SPIN = 222, besides IN.RHO, a IN.RHO\_SOM (a complex 2x2 spin matrix density) will be needed. If IN.RHO = F, not input the charge density.
 
-    One can use utility program: convert\_rho.x to plot OUT.RHO or IN.RHO. One can also check convert\_rho.f90 for the format of IN.RHO, OUT.RHO.
+ One can use utility program: convert\_rho.x to plot OUT.RHO or IN.RHO. One can also check convert\_rho.f90 for the format of IN.RHO, OUT.RHO.
 
 ### IN.RHO\_ADD
 
@@ -3093,3 +3094,871 @@ OUT.RHO = T, PWmat will output a file `OUT.RHO`, the final charge density in rea
 Use utility program `convert\_rho.x` to plot the charge density (unit in e/Bohr$^3$). More details about `convert\_rho.x`, please refer to PWmat website http://www.pwmat.com/utility-download.
 
 If OUT.RHO = F, not output the charge file.
+
+### OUT.VR
+
+|Tag|OUT.VR|
+| --- | --- |
+|**Format**|OUT.VR = T / F|
+|**Default**|OUT.VR = T|
+
+OUT.VR = T, PWmat will output the total potential in file `OUT.VR`, stored in real space grid (N1L, N2L, N3L). This is the default value. When SPIN=2, an extra file `OUT.VR\_2` will be output. When SPIN=222, OUT.VR, OUT.VR\_SOM (a 2x2 complex spin matrix potential), and OUT.VR\_DELTA (a real up-down potential) will be output. Use utility program `convert\_rho.x` to plot the potential (unit in Hartree).
+
+If OUT.VR = F, not output the potential file.
+
+### OUT.HSEWR
+
+|Tag|OUT.HSEWR|
+| --- | --- |
+|**Format**|OUT.HSEWR = T / F|
+|**Default**|OUT.HSEWR = T|
+
+OUT.HSEWR = T, PWmat will output the real space wave functions for the Fock exchange kernel for all the extended k-points on every GPU in `OUT.HSEWR($i$)' files, $i$ is the index of GPUs. This is the default value. If OUT.HSEWR = F, not output the file.
+
+### OUT.ELF
+
+|Tag|OUT.ELF|
+| --- | --- |
+|**Format**|OUT.ELF = T / F ELF\_RHO\_TOL|
+|**Default**|OUT.ELF = F 1.D-4|
+
+This parameter is used to control whether to output OUT.ELF file. If charge density rho(r) < ELF\_RHO\_TOL, set rho(r)=0 for ELF calculation. The file OUT.ELF is the electron localization function, you can convert it to xsf format by using convert\_rho.x utility. Usually you should set Ecut2=4*Ecut in etot.input.
+
+### OUT.REAL.RHOWF\_SP
+
+|Tag|OUT.REAL.RHOWF\_SP|
+| --- | --- |
+|**Format**|OUT.REAL.RHOWF\_SP = IFLAG, KPT1, KPT2, ISPIN1, ISPIN2, IW1, IW2, E1, E2|
+|**Default**|OUT.REAL.RHOWF\_SP = 0|
+
+Output the charge density (or wave function) in real space. This is a special option allow user to selectively output some charge density and wave functions.
+
+Controls the output of partial charge density (or wave function without square) in real space grid (N1, N2, N3) from selected eigen orbitals within the intervals: k-points: [ KPT1, KPT2 ], spins: [ ISPIN1, ISPIN2 ], bands: [ IW1, IW2 ] in the file: `OUT.REAL.RHOWF\_SP`. For partial charge density, one can also set [E1,E2] the eigen energy range. If [E1,E2] exists, the bands range will not be used. The unit of E1 and E2 is eV. This is different from OUT.RHO, since it can select which wave function to be included in the charge density. For:
+
+IFLAG=0, not output the density or wavefunctions, default setting.
+
+IFLAG = 1/11/12, output the density or wavefunctions at the end of other calculations.
+
+IFLAG=1, output charge density;
+
+IFLAG=11, output the wavefunctions, one after the other without the $e^{-ikr}$ phase;
+
+IFLAG=12, output the wavefunctions, one after the other with the $e^{-ikr}$ phase.
+
+IFLAG = 2/21/22, output the density or wavefunctions before doing any other calculations, then stop PWmat.
+
+IFLAG=2, output charge density;
+
+IFLAG=21, output the wavefunctions, one after the other without the $e^{-ikr}$ phase;
+
+IFLAG=22, output the wavefunctions, one after the other with the $e^{-ikr}$ phase.
+
+```bash
+DO IK = KPT1, KPT2
+    DO IS = ISPIN1, ISPIN2
+        DO IW = IW1, IW2
+            REAL PART:
+            DO INODE = 1, NNODE
+                WRITE (11) (REAL(PSI(IR+(INODE-1)*NR_N)), IR = 1, NR_N)
+            END DO
+            IMAG PART:
+            DO INODE = 1, NNODE
+                WRITE (11) (IMAG(PSI(IR+(INODE-1)*NR_N)), IR = 1, NR_N)
+            END DO
+        END DO
+    END DO
+END DO
+```
+
+In above PSI(IR) is the wave function in the real space grid (N1,N2,N3), it first runs through N3, then N2, then N1. In another word, for a given point (i,j,k), for i within [1,N1], j within [1,N2], k within [1,N3] then: IR=(i-1)*N2*N3+(j-1)*N3+k.
+
+Note, the wave function can also be viewed (perhaps more conveniently) one by one using the utility function plot\_wg.x, using OUT.WG.
+
+### OUT.SOLVENT\_CHARGE
+
+|Tag|OUT.SOLVENT\_CHARGE|
+| --- | --- |
+|**Format**|OUT.SOLVENT\_CHARGE = T / F|
+|**Default**|OUT.SOLVENT\_CHARGE = F|
+
+Output several files for viewing when IN.SOLVENT=T.
+
+If OUT.SOLVENT\_CHARGE=T, several files (in the same format as OUT.RHO) will be ouput: OUT.RHO\_4DIELECTRIC (the rho\_e to be used to generate the dielectric function. One can plot the isosurface plots using RHOMAX\_DIELECTRIC and RHOMIN\_DIELECTRIC values described in IN.SOLVENT to view where are the turn-in/off surfaces of the dielectric constant); OUT.RHO\_POLARIZE (the solvent induced polarization charge); OUT.V\_POLARIZE (the polarized potential generated by the polarization charge OUT.RHO\_POLARIZE); OUT.RHOP\_VHION (the polarizaion charge multiplied by the electric static potential of the solute molecule. The integrate of this density is the polarization energy. One can use this to see where the polazation energy comes from). One usually use VESTA to view these files.
+
+### OUT.FORCE
+
+|Tag|OUT.FORCE|
+| --- | --- |
+|**Format**|OUT.FORCE = T / F|
+|**Default**|OUT.FORCE = T|
+
+If OUT.FORCE = T, the PWmat will calculate the atomic force, and output the force in file `OUT.FORCE`. This is for one shot (one atomic position snap shot) JOB=SCF calculation only. For JOB=RELAX, or JOB=MD, PWmat will always calculate the force and output them.  Also note, this will not work for JOB=NONSCF, since there the total energy and SCF charge density will not be calculated. The force unit is eV/Amstrong. if OUT.FORCE = F, the default, not calculate the force and output the file.
+
+### OUT.STRESS
+
+|Tag|OUT.STRESS|
+| --- | --- |
+|**Format**|OUT.STRESS = T / F|
+|**Default**|OUT.STRESS = T, JOB=RELAX|
+| |OUT.STRESS = F, everything else|
+
+Calculate and output the stress tensor. Definition of stress tensor(eV), $\epsilon_{ij}$ is stain:
+
+$\sigma_{ij}=\frac{\partial E_{tot}}{\partial \epsilon_{ij}}$
+
+Definition of pressure(GPascal):
+
+$P=-\frac{1}{3\Omega}(\sigma_{11}+\sigma_{22}+\sigma_{33})$
+
+If OUT.STRESS=T, the stress tensor will be calculated and written in file OUT.STRESS.
+
+If do cell relaxation, the stress is automatically calculated. When JOB = SCF, if OUT.STRESS = T, the stress will be calculated; if OUT.STRESS = F, the stress will not be calculated.
+
+### OUT.VATOM
+
+|Tag|OUT.VATOM|
+| --- | --- |
+|**Format**|OUT.VATOM = T / F|
+|**Default**|OUT.VATOM = F|
+
+If setting OUT.VATOM = T, it will output the atom center potential for SCF or MD simulation. The default is F. This can be used for energy level alignment etc. The output unit is eV. This does an average using atomic charge density dot-product with the total potential. We do not have core level potential. So, for band alignment, we usually use this atomic potential.
+
+### OUT.TDDFT
+
+|Tag|OUT.TDDFT|
+| --- | --- |
+|**Format**|OUT.TDDFT = T\_1 T\_2 n\_1 T\_3 n\_2|
+|**Default**|OUT.TDDFT = F F 1.0 F 1.0|
+
+The output files can be used to restart TDDFT and show the process of TDDFT.
+
+|T\_1, T\_2, n\_1|T\_1=T/F|eigen energy, $occ(i)$ per $n\_1$ fs. The output will be in file OUT.TDDFT1. One can use plot\_TDDFT.f90(ref. util) to read and output OUT.TDDFT1.|
+| --- | --- | --- |
+| |T\_2=T/F|$C_{ij}$ per n\_1 fs|
+|T\_3, n\_2|T\_3=T/F|output all the wavefunctions and charge densities per $n\_2$ fs for restart. The output will be in file OUT.TDDFT and directory TDDOS/. This can be very expensive, so use large $n\_2$.|
+
+### OUT.MLMD
+
+|Tag|OUT.MLMD|
+| --- | --- |
+|**Format**|OUT.MLMD = T / F|
+|**Default**|OUT.MLMD = F|
+
+If OUT.MLMD = T, the program will output OUT.MLMD file during JOB = SCF. The format of OUT.MLMD is the same as MOVEMENT, including atomic postion and atomic force setctions.
+
+### OUT.GAUSSIAN
+
+|Tag|OUT.GAUSSIAN|
+| --- | --- |
+|**Format**|OUT.GAUSSIAN = T / F|
+|**Default**|OUT.GAUSSIAN = F|
+
+If OUT.GAUSSIAN = T, the program will output the Gaussian basis set information in file OUT.GAUSSIAN\_H, OUT.GAUSSIAN\_S, OUT.GAUSSIAN\_H\_T, OUT.GAUSSIAN\_S\_T, OUT.GAUSSIAN\_BASIS\_INDEX. This is only for Gaussian basis set calculation. 
+
+### OUT.GTH2UPF
+
+|Tag|OUT.GTH2UPF|
+| --- | --- |
+|**Format**|OUT.GTH2UPF = T / F|
+|**Default**|OUT.GTH2UPF = F|
+
+If OUT.GTH2UPF = T, the program will convert the GTH pseudopoentials to UPF format. The output files are with prefix ``GTH''.
+
+### PWSCF\_OUTPUT
+
+|Tag|PWSCF\_OUTPUT|
+| --- | --- |
+|**Format**|PWSCF\_OUTPUT = T / F|
+|**Default**|PWSCF\_OUTPUT = F|
+
+If PWSCF\_OUTPUT = T, the program will output the wave function, charge density and potential in the format of PWSCF. The output files are in the directory ``prefix.save''.
+
+>
+>**TIP**: Some recommendations: If PWSCF\_OUTPUT=T, please use the setting: ECUT2L = ECUT2, N123L = N123, ECUT2 = 4*ECUT. Because PWmat implement a different FFT from PWSCF.
+{: .block-tip}
+
+### PULAY\_IN\_OUT
+
+|Tag|PULAY\_IN\_OUT|
+| --- | --- |
+|**Format**|PULAY\_IN\_OUT = 0/1 0/1|
+|**Default**|PULAY\_IN\_OUT = 0 0|
+
+This parameter controls whether to read-in or write-out the pulay mixing matrix in the file ``dwdR\_out.*''. The first number controls whether to read-in the pulay mixing matrix from the file ``dwdR\_out.*'', 0 - not read , 1 - read; The second number controls whether to write-out the pulay mixing matrix to the file ``dwdR\_out.*'', 0 - not write , 1 - write.
+
+## Structure file (atom.config)
+
+The structure file can be named arbitrarily, but its name must be specified by the tag `IN.ATOM' in `etot.input' file. In most of our examples and tutorials, the name of structure file is `atom.config'. The contents in this file describe the lattice vector of the supercell, and how many atoms are in the supercell, their atomic number, fractional coordinates and whether they can move. Some optional data blocks can also be written in the structure file: such as the force of the atom, the velocity of the atom, the initial magnetic moment of the atom (including collinear or non-collinear magnetic moments), etc. It has the following format:
+
+```bash
+64
+LATTICE
+0.1084993850E+02 0.0000000000E+00 0.0000000000E+00
+0.0000000000E+00 0.1084993850E+02 0.0000000000E+00
+0.0000000000E+00 0.0000000000E+00 0.1084993850E+02
+POSITION
+30  0.952534560  0.363594470  0.382027650 1 1 1
+30  0.540553000  0.850230410  0.966359450 1 1 1
+...
+16  0.242857140  0.140553000  0.684331800 1 1 1
+FORCE # optional
+30 -0.060040948  0.097096690  0.063013193
+30  0.001068674 -0.002521614  0.000147553
+...
+16 -0.007955164 -0.008758074  0.029047748
+VELOCITY # optional
+30  0.02339881  -0.287387433 -0.109339839
+30 -0.23878474  -0.210836551  0.049311111
+...
+16  0.53761771  -0.023987172  0.288399911
+MAGNETIC # optional, initial collinear magnetic moment
+30 2
+30 2
+...
+16 0
+CONSTRAINT_MAG # optional, to constraint magnetic moment
+30 2 0.01      # mag,alpha (mag: desired magnetic moment)
+30 2 0.01      # mag,alpha (alpha: penalty coeff, eV)
+...
+16 0 0.00
+MAGNETIC_XYZ # optional, initial non-collinear magnetic moment
+30 2 0 0
+30 2 0 0
+...
+16 0 0 0
+LANGEVIN_ATOMFACT_TG # optional, special Lagenvin MD, atomic temperature and gamma
+30  1.0   1.0
+30  0.5   1.0
+...
+16  0.5   0.5
+STRESS_MASK # optional
+1 0 0
+0 1 0
+0 0 1
+STRESS_EXTERNAL # optional
+0.1 0.0 0.0
+0.0 0.1 0.0
+0.0 0.0 0.1
+PTENSOR_EXTERNAL # optional
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+DIMER_DIR_N # optional
+30   0.000001    0.522103   -0.000009 
+30  -0.000006    0.530068    0.000000
+...
+16   0.000001   -0.111442    0.000001
+```
+    They have the following meanings:
+|Tag|Meaning|
+| --- | --- |
+|**Natom**|The number of atoms in the system, as a result, Position, Force, Velocity, Magnetic sections will all have Natom lines, each atom per line, and the sequence must be consistent.|
+|**LATTICE**|The header of the lattice vector AL(3,3) section. There will be three lines following Lattice vector:|
+| |AL(1,1), AL(2,1), AL(3,1) (the 1st vector of the supercell axis in \AA)|
+| |AL(1,2), AL(2,2), AL(3,2) (the 2nd vector of the supercell axis in \AA)|
+| |AL(1,3), AL(2,3), AL(3,3) (the 3rd vector of the supercell axis in \AA)|
+|**POSITION**|the header of the atomic positions of the system. There will be Natom lines, each line describes one atom, including its atomic number, fractional coordinates and degree of freedom, in the following form:|
+| |Zatom  x1      x2       x3       imv1  imv2  imv3|
+| |30     0.2293  0.59822  0.44444  1     1     1|
+|**ZATOM**|is the atomic number of this atom, **x1, x2, x3** are the fractional coordinates of this atom in the supercell. **imv1, imv2, imv3** indicates whether the cartesian coordinates of this atom can be changed when JOB = RELAX / MD / TDDFT / NAMD / NEB / DIMER. If Imv1 (2, 3) = 1, the coordinate of direction x (y, z) can be changed; If Imv1 (2, 3) = 0, the coordinate of direction x (y, z) can not be changed.|
+|**FORCE**|The header of the force section. This section is optional.|
+| |It will be followed by natom lines in the following form:|
+| |zatom, f\_x,   f\_y,     f\_z|
+| |30     0.0372 0.01112 -0.1021|
+| |They are the x, y, z direction atomic forces in $eV/{\angstrom}$.|
+|**VELOCITY**|The header of the velocity section. This section is optional. If will be|
+| |followed by natom lines in the following form:|
+| |zatom, v\_x,    v\_y,      v\_z|
+| |30     0.39292 -0.222933 0.28211|
+| |They are the x, y, z direction atomic velocity in $Bohr/fs$.|
+|**MAGNETIC**|The header of the magnetic section. This tag specify the|
+| |initial collinear magnetic moment for each atom when SPIN = 2.  It will be followed by natom|
+| |lines in the following format:|
+| |zatom spin|
+| |30    2|
+| |2 is the magnetic moment: 0 is no spin, the negative is spin down, the positive is spin up.|
+|**CONSTRAINT\_MAG**|The header of the constraint magnetic moment section. This tag specifies the|
+| |desired magnetic moment, and a penalty coefficient to enforce the system to have such magnetic moment.|
+| |This only works for spin=2. It will be followed by natom|
+| |lines in the following format:|
+| |zatom spin,alpha|
+| |30    2    0.01|
+| |2 is the desired magnetic moment to force the atom to have: 0.01 is the alpha coefficient (in the|
+| |unit of eV) for the penalty term. Smaller this alpha, less the enforcement.|
+||Note, if the alpha is too large, the system may not converge.|
+|**MAGNETIC\_XYZ**|The header of the magnetic section. This tag specify the|
+| |initial non-collinear magnetic moment for each atom when SPIN = 222.  It will be followed by natom|
+| |lines in the following format:|
+| |zatom spin mx my mz|
+| |30    2    0  0  0|
+| |2 is the magnetic moment: 0 is no spin, the negative is spin down, the positive is spin up.|
+|**LANGEVIN\_ATOMFACT\_TG**|The header of the Langevin MD section. This tag specify the|
+| |atomic temperature and gamma for each atom when JOB = LANGEVIN.  It will be followed by natom|
+| |lines in the following format:|
+| |zatom temp gamma|
+| |30    1.0  1.0|
+| |1.0 is the atomic temperature in Kelvin, 1.0 is the gamma in fs$^{-1}$.|
+|**STRESS\_MASK**|The header of the stress mask section. This tag specify the|
+| |the stress mask for each atom when JOB = STRESS.  It will be followed by 3 lines in the following format:|
+| |1 0 0|
+| |0 1 0|
+| |0 0 1|
+| |1 means the stress of this atom will be calculated, 0 means not.|
+|**STRESS\_EXTERNAL**|The header of the external stress section. This tag specify the|
+| |the external stress for each atom when JOB = STRESS.  It will be followed by 3 lines in the following format:|
+| |0.1 0.0 0.0|
+| |0.0 0.1 0.0|
+| |0.0 0.0 0.1|
+| |The unit is Hartree/Bohr$^3$.|
+|**PTENSOR\_EXTERNAL**|The header of the external pressure tensor section. This tag specify the|
+| |the external pressure tensor for each atom when JOB = STRESS.  It will be followed by 3 lines in the following format:|
+| |1.0 0.0 0.0|
+| |0.0 1.0 0.0|
+| |0.0 0.0 1.0|
+| |The unit is Hartree/Bohr$^3$.|
+|**DIMER\_DIR\_N**|The header of the dimer direction section. This tag specify the|
+| |the dimer direction for each atom when JOB = DIMER.  It will be followed by natom|
+| |lines in the following format:|
+| |zatom dx dy dz|
+| |30   0.000001 0.522103 -0.000009|
+| |0.000001 is the dimer direction for this atom.|
+
+
+
+
+
+\noindent {\color{blue}How to convert the format of the structure file:} \label{convert structure}
+By using some \hyperref[utility:programs]{utilities}, we can convert other crystal formats to PWmat format or convert it back like:
+
+VASP format to PWmat format: `poscar2config.x POSCAR';\\
+CIF format to PWmat format: `cif2cell XXX.cif –p pwmat', please refer to \href{http://www.pwmat.com/module-download}{CIF2CELL} for more details;\\
+XSF format to PWmat format: `xsf2config.x POSCAR'.\\
+
+PWmat format to VASP format: `config2poscar.x atom.config';\\
+PWmat format to CIF format: `atomconfig2cif atom.config', please refer to \href{http://www.pwmat.com/module-download}{CIF2CELL} for more details;\\
+PWmat format to XSF format: `convert\_from\_config.x atom.config'.\\
+
+Check structural information of PWmat structure file: `atominfo.x atom.config'.\\
+
+
+\section{Pseudopotential files (*.UPF)} \label{inputfile:pseudopotential}
+
+Pseudopotential files can be named arbitrarily, but must be specified in `etot.input'
+ by the tag `IN.PSP'. The pseudopotential supported by PWmat is in unified pseudopotential format (UPF). 
+ At present, PWmat only supports the use of norm-conserving pseudopotential (NCPP) or 
+ ultrasoft pseudopotential (USPP), PWmat does not
+support the "projector augmented wave" (PAW) pseudopotential. We strongly recommend you to use NCPP because 
+ most of the USPP functions in PWmat are no longer maintained. Besides, the recent "norm conserving 
+ vanderbilt pseudopotential" released by D.R. Hamann made the norm conserving pseudopotential very reliable. 
+
+Some online libraries provide available pseudopotential files. Now you can also download it from \href{http://www.pwmat.com/potential-download}{PWmat website}. 
+The current release include the following pseudopotential sets: ONCV-PWM, NCPP-SG15,
+NCPP-PD03,NCPP-PD04, NCPP-FHI. They are all NCPP sets. PWmat allows to use pseudopotentials from different sets in one calculation but it is recommended to use pseudopotentials from same set.
+
+NCPP-SG15, NCPP-PD03 and NCPP-PD04 are very accurate. However, due to the consideration of semi-core valence electrons for most elements, the calculation speed is relatively slow and requires a large amount of memory. Comparing to SG15, ONCV-PWM has less valence electrons, and the plane wave cutoff energy for wavefunction can be relatively greatly reduced (our
+recommended cutoff is 45Ry). The error of ONCV-PWM and NCPP-FHI may be relatively large.
+If you want to calculate quickly, you can use ONCV-PWM or NCPP-FHI.
+If you want to calculate accurately, you can use NCPP-SG15, NCPP-PD03, or NCPP-PD04.
+
+The calculation of spin-orbit coupling (SPIN=22/222) requires SOC pseudopotential sets, such as NCPP-SG15-PBE-SOC. However, if one has a NCPP UPF with SOC,
+one can use our utility `upf2upfSO.x' to convert it into our special UPF format
+for our SOC calculation.
+
+For NCPP-PD03, NCPP-PD04, NCPP-SG15 (these two are rather similar), we recommend the user to
+use Ecut=50 Ryd (if it is not converged, one can even use 60, or 80 Ryd). The most
+challenging calculation is for the atomic relaxation where smooth energy surface is
+required. For that purpose, for these two sets of pseudopotentials, we recommend:
+Ecut2=4Ecut, and Ecut2L=4Ecut2 (e.g., N123L=2N123). In other words, choose Accuracy=high.
+On the other hand, for NCPP-FHI, one can use Ecut=40,50, while Ecut2=2Ecut, Ecut2L=Ecut2
+(e.g., choose Accuracy=norm). For USPP-SOFT, in most cases, one can choose: Ecut=30,
+Ecut2=2Ecut, Ecut2L=4Ecut2. FOr USPP-GBRV, Ecut=40 Ryd is recommended, along with,
+perhaps, Ecut2=2Ecut, Ecut2L=4Ecut2.
+
+Note, the above requirement is only true for JOB=RELAX. For other jobs, including
+JOB=MD, or bandstructure, one can relax the requirement, perhaps using Ecut2=2Ecut,
+and Ecut2L=Ecut2 ( Accuracy=norm) even for NCPP-PD03 and NCPP-SG15.
+
+Note, the pseudopotential file also contains information for Ecut, and rcut. That
+will be the default Ecut, and rcut when they are used.
+
+\section{Optional input files} \label{optionalinput}
+\subsection{IN.KPT file}\label{otherinput:in.kpt}
+If one set IN.KPT = T in `etot.input', it will read the file ``IN.KPT'', which contains the k-point vectors
+and their weights. %It can be generated from preprocessing by running ``$>$check.x''.In
+%``$>$check.x'', it will use the Monkhorst-Pack line: ``MP\_N123=nk1, nk2, nk3, sk1, sk2,
+%sk3'' in etot.input, and symmetry of the system to produce the irreducible k-points for
+%total energy calculations.
+
+The format of `IN.KPT' is same as \hyperref[outputfile:out.kpt]{`OUT.KPT'}.
+
+
+\subsection{IN.SYMM file}\label{otherinput:in.symm}
+If one set IN.SYMM = T in `etot.input', it will read the file ``IN.SYMM'', which contains
+the symmetry operations. 
+
+The format of `IN.SYMM' is same as \hyperref[outputfile:out.symm]{`OUT.SYMM'}. 
+
+\subsection{IN.OCC file} \label{otherinput:in.occ}
+Check \ref{tag:in.occ} for more details.
+
+\subsection{IN.OCC\_T file} \label{otherinput:in.occt}
+If we have IN.OCC\_T = T. Then, it will read in file `IN.OCC\_T'  (and `IN.OCC\_T\_2' if spin=2), and it will ignore the imth\_Fermi  flag
+In the SCF\_ITERx\_x line.
+
+Inside `IN.OCC\_T', we currently have the following format:
+\begin{spacing}{1.2}
+\begin{Verbatim}[frame=single,fontfamily=tt]
+nline, nkpt
+**** kpt=1 *****
+Istate, iformula, a1,a2,a3,a4,a5
+Xxxxx
+nlines
+**** kpt= 2 ******
+Istate,iformula,a1,a2,a3,a4
+Xxxxx
+\end{Verbatim}
+\end{spacing}
+
+One example is:
+\begin{spacing}{1.2}
+\begin{Verbatim}[frame=single,fontfamily=tt]
+2,  2
+*** kpt=1 ****
+1,  1,  0.1, -1., 0.,0,0
+3,  1,  0.1, -1., 0., 0., 0.
+****kpt=2 ****
+1,  1,  0.1, -1., 0.,0,0
+3,  1,  0.1, -1., 0., 0., 0.
+\end{Verbatim}
+\end{spacing}
+
+The nline indicate how many states (bands) one need the time-dependent occ(t) correction.  Nkpt is the number of k-points.
+
+The istate is the index for one band ( psi\_istate ) which needs time dependent modification for occ(t).
+
+Iformula is the flag for formula.  A1,a2,a3,a4,a5 are five parameter.
+
+We have the following two formula:
+
+Iformula=1
+
+For time $<$ a1:   Occ(t,istate)=occ(0,istate)+(time/a1)*a2
+
+For time $>=$ a1:  Occ(t,istate)=occ(0,istate)+a2
+
+Iformula=2
+
+For time $<$a1, Occ(t,istate)=occ(0,istate)+(1-cos(pi*time/a1/2)**2)*a2
+
+For time $>=$a1:  Occ(t,istate)=occ(0,istate)+a2
+
+So, at this moment, a3,a4,a5 are never used.
+
+This change of occ(i) is used to describe some electron state is suddenly removed (or added)
+to the system from some specific states. It is different from the use of IN.OCC. In IN.OCC, a
+selfconsistent solution is achieved making some state empty or occupied not according to
+Fermi-Dirac distribution. But the solution of IN.OCC is the occupation of pure eigen states
+in the H(N-1) (remove one electron) or H(N+1) (add one electron) Hamiltonian. For the use of
+IN.OCC\_T, it could be that the original H(N) eigen state psi\_istate is removed, so at
+H(N-1), the states which is removed (or still occupied) might not be the eigen states
+of H(N-1) (but they might be close to the eigen states of H(N), if parameter a1 is short enough)
+
+
+\subsection{IN.NONSCF file} \label{otherinput:in.nonscf}
+When JOB = NONSCF, some specific parameters can be set in the file `IN.NONSCF'. In this way, you also have to set `IN.NONSCF = T' in etot.input.
+
+The settings available in the file `IN.NONSCF' are as follows:
+
+\begin{spacing}{1.2}
+\begin{mdframed}[style=exampledefault]
+NONSCF\_METH = 0 \\
+\verb"    "!  0 -- the conventional NONSCF calculation \\
+\verb"    "!  1 -- calculate minimal eigen energy \\
+\verb"    "!\verb"    "must set PRECISION=DOUBLE in etot.input \\
+\verb"    "! -1 -- calculate maximal eigen energy \\
+\verb"    "!\verb"    "must set PRECISION=DOUBLE in etot.input \\
+\verb"    "!  2 -- the escan calculation based on $(H-FSM\_EREF)^2$, using folded spectrum method \\
+\verb"    "!\verb"    "must set PRECISION=DOUBLE in etot.input \\
+\verb"    "!\verb"    "must set NUM\_BAND explicitly in etot.input \\
+\verb"    "!  3 -- the DOS calculation using generalized moments method \\
+\verb"    "!\verb"    "must set PRECISION=DOUBLE in etot.input \\
+\verb"    "!  4 -- the OAS(optical absorption spectrum) calculation using generalized moments method \\
+\verb"    "!\verb"    "must set PRECISION=DOUBLE in etot.input \\
+\verb"    "!  5 -- the chebyshev filter method to calculate eigen energies within specified range\\
+\verb"    "!\verb"    "must set PRECISION=DOUBLE in etot.input \\
+FSM\_EREF = 0.0 \\
+\verb"    "! the reference energy used in $(H-FSM\_EREF)^2$ for NONSCF\_METH=2 \\
+\verb"    "! unit eV. \\
+GMM\_DOS\_EMIN = 0.0 \\
+\verb"    "! the minimal energy of DOS range, must be smaller than the mininal eigen  energy calculated by NONSCF\_METH=1 \\
+\verb"    "! only used by NONSCF\_METH=3 \\
+\verb"    "! unit eV. \\
+GMM\_DOS\_EMAX = 0.0 \\
+\verb"    "! the maximal energy of DOS range, must be larger than the maxinal eigen energy calculated by NONSCF\_METH=-1 \\
+\verb"    "! only used by NONSCF\_METH=3 \\
+\verb"    "! unit eV. \\
+GMM\_DOS\_IN\_PSI0 = T/F FILE\_NAME\_PSI0 \\
+\verb"    "! whether to use an initial wavefunction file instead of random initialization \\
+\verb"    "! only used by NONSCF\_METH=3 \\
+GMM\_DOS\_MMAX = 3000 \\
+\verb"    "! the total number of moments for the moments method. The energy resolution is roughly $(EMAX-EMIN)/MMAX$ \\
+GMM\_DOS\_IRANDOM = 2019 \\
+\verb"    "! random number seed \\
+GMM\_DOS\_mx\_ab = 20 \\
+\verb"    "! used by nonscf\_meth=5, the number of wave functions to be stored in the memory. \\
+\verb"    "! larger mx\_ab will require more memory, but it will reduce the number of I/O \\
+GMM\_DOS\_ipxyz = 0 \\
+\verb"    "! used by nonscf\_meth=5, the absorption polarization in x, y, z\\
+\verb"    "! ipxyz=1, x polarization only, output Tm.store.1 \\
+\verb"    "! ipxyz=2, y polarization only, output Tm.store.2  \\
+\verb"    "! ipxyz=3, z polarization only, output Tm.store.3 \\
+\verb"    "! ipxyz=0, x, y, z polarizations, output Tm.store.1, Tm.store.2, Tm.store.3 \\
+ESCAN\_DETAIL = E\_window\_start, E\_window\_end, degree\_cheb, niter\_lanczos \\
+\verb"    "! used by nonscf\_meth=5, unit of E\_window\_start and E\_window\_end is eV. \\
+\verb"    "! PWmat well calculate eigen states with energy in range (E\_window\_start, E\_window\_end) \\ 
+\verb"    "! default is 0,0,1000,20; Please check ref paper for last two parameters. \cite{chefd}\\ 
+\verb"    "! E\_window\_start should not be equal to E\_window\_end for actrual use.\\
+    \end{mdframed}
+\end{spacing}
+
+ For NONSCF\_METH=5, the chebyshev filter method\cite{chefd}, one should use just one nonscf with larger nline by setting SCF\_ITER0 as following (NITER0=1,NLINE0=10), you can always increase NLINE0 to get more converged results:
+    \begin{spacing}{1.2}
+        \begin{mdframed}
+            SCF\_ITER0\_1 = 1 10 3 0.0 0.025 1 
+        \end{mdframed}
+    \end{spacing}
+    For NONSCF\_METH=5, you also need to estimate the NUM\_BAND, especially for large systems.
+
+
+\subsection{IN.RELAXOPT file} \label{otherinput:in.relaxopt}
+When JOB = RELAX / NEB / DIMER, some specific parameters can be set in the file `IN.RELAXOPT'. In this way, you also have to set `IN.RELAXOPT = T' in etot.input.
+
+The IN.RELAXOPT is as follows:
+     \begin{spacing}{1.2}
+    \begin{mdframed}[style=exampledefault]
+    PSTRESS\_EXTERNAL= 0.0 \\
+    \verb"    "! external hydrostatic pressure. unit GPascal -- for cell relaxation\\
+    \verb"    "! the energy P*V (i.e. pressure*volume) will be written in file REPORT with flag "Energy PV". \\
+RELAX\_MAXMOVE = 1.0 \\
+\verb"    "! max move distance. unit bohr -- for JOB=RELAX/NEB and method=1,5,6. \\
+\verb"    "! This can be used to enforce small steps, for convergence. \\
+LBFGS\_MEMORY = 30 \\
+\verb"    "! LBFGS storage size -- for JOB=RELAX/NEB and method=5. \\
+FIRE\_DT = 1.0 \\
+\verb"    "! initial time step.  unit fs -- for JOB=RELAX/NEB and  method=6. \\
+\verb"    "! the max time step for FIRE method is 10*FIRE\_DT. \\
+RHOWG\_INTER\_TYPE = 1 \\
+\verb"    "! interpolation type for JOB=NEB: 0--both rho and wave function; 1--rho only. \\
+\verb"    "! default = 1, save time by not writing wavefunction to disk \\
+NSTEP\_OUTPUT\_RHO=100 \\
+\verb"    "! step interval to output the charge density; for JOB=RELAX \\
+\verb"    "! It is used to output more charge density for later use and analysis. \\
+CELL\_FIX = 0 1 1 1 \\
+\verb"    "! the first number is the flag for cell optimization(JOB=RELAX), 0 - not fix shape and angle, 1 - fix angle, 2 - fix shape. \\
+\verb"    "! the following 3 numbers are the flags for each lattice vector (i.e. a,b,c) just used when the first number is 1, \\
+\verb"    "! 0 means that lattice vector is fixed, 1 means that lattice vector can be optimized. \\
+\verb"    "! when the first number is 2, the following 3 numbers are not used, and only the volume of the cell is optimized. \\
+    \end{mdframed}
+\end{spacing}
+
+Following parameters can be set for JOB=DIMER in file IN.RELAXOPT, one also should set IN.RELAXOPT=T in etot.input if needed.
+ \begin{spacing}{1.2}
+    \begin{mdframed}[style=exampledefault]
+DIMER\_DR \\
+\verb"    "! the dimer seperation, unit Bohr; for JOB=DIMER \\
+DIMER\_NMAX\_ROTS \\
+\verb"    "! the maximum number of rotation for each translation step; for JOB=DIMER \\
+DIMER\_NMAX\_STEPS \\
+\verb"    "! the maximum number of translation steps; for JOB=DIMER \\
+DIMER\_TOL\_FORCE \\
+\verb"    "! force tolerance to judge the convergency, unit eV/Angstrom; for JOB=DIMER \\
+DIMER\_MAX\_STEPSIZE \\
+\verb"    "! the maximum step size of each translation step, unit Bohr; for JOB=DIMER \\
+    \end{mdframed}
+\end{spacing}
+
+   
+
+\subsection{IN.MDOPT file} \label{otherinput:in.mdopt}
+    When JOB = MD, some specific parameters related to MD methods can be set in the file `IN.MDOPT'. In this way, you also have to set `IN.MDOPT = T' in etot.input.
+
+The file and parameters(and the parameters' default values) are as follows,
+
+    IN.MDOPT:
+    \begin{spacing}{1.2}
+    \begin{mdframed}[style=exampledefault]
+      MD\_CELL\_TAU =    400*DT \verb"   "  !(for 4,5,8, LV,NH-cell) \\
+\verb"    "! DT is the MD time step ($fs$). \\
+\verb"    "! characteristic time for cell oscillations ($fs$). \\
+\verb"    "! Larger MD\_CELL\_TAU results in a longer time to reach equilibrium (both temperature and pressure) for the cell \\
+
+MD\_ION\_TAU =    40*DT \verb"   " !(for 2,5, NH-ion)   \\
+\verb"    "! characteristic time for particles oscillations ($fs$). \\
+\verb"    "! This is for the NH algorithm, the time scale for the ion movement to reach equilibrium for a given temperature. Longer MD\_ION\_TAU, slower the particles to reach equilibrium. \\
+\verb"    "! For more accurate simulation, one should use larger MD\_ION\_TAU, but the fluctuation will also be larger. \\
+MD\_LV\_GAMMA =    0.01 \verb"   " !(for 3,4, LV-ion)  \\
+\verb"    "! friction coefficient for particle movement in LV ($fs^{-1}$). \\
+\verb"    "! Larger MD\_LV\_GAMMA, faster it reaches equilibrium, but then larger is the random noise in LV algorithm \\
+\verb"    "! For more accurate, more realistic calculation, one needs smaller MD\_LV\_GAMMA, but then the fluctuation will also be bigger. \\
+
+MD\_NPT\_GAMMA=    0.01 \verb"   " !(for 4, LV-NPT) \\
+\verb"    "! friction coefficient for cell ($fs^{-1}$). \\
+\verb"    "! Larger  MD\_NPT\_GAMMA, faster it reaches cell equilibrium.\\
+\verb"    "! For accurate calculation, one should use smaller MD\_NPT\_GAMMA, but the fluctuation will also be larger.\\
+MD\_NPT\_PEXT=    0.0 \verb"   " !(for 4,5,7, NPT) \\
+\verb"    "! This is the applied external hydrastatic pressure (GPa). \\
+MD\_NPT\_PEXT\_XYZ=    0.0   0.0     0.0 \verb"  " !(for 4,5,7, NPT) \\
+\verb"    "! external x,y,z pressure (GPa), over-write(higher priority than) MD\_NPT\_PEXT. \\
+MD\_BERENDSEN\_TAU=    500*DT  \verb"   " !(for 6, 7, BR-ion) \\
+\verb"    "! the atom velocity rescaling time in Berendsen method ($fs$). \\
+\verb"    "! Larger MD\_BERENDSEN\_TAU will be more accurate, but the fluctuation will also be larger.\\
+MD\_BERENDSEN\_TAUP=    500*DT \verb"   " !(for 7, BR-cell) \\
+\verb"    "! the cell rescaling time in Berendsen method for MD=7 ($fs$). \\
+\verb"    "! Larger  MD\_BERENDSEN\_TAUP will be more accurate, but the fluctuation will also be larger.\\
+MD\_BERENDSEN\_CEL\_STEPS= nstep \verb" " !(for 7, BR-cell) \\
+\verb"    "! the number of MD steps for one stress calculation. \\
+\verb"    "! The default value is one. One can increase nstep, so there are less stress calculation. \\
+\verb"    "! The stress calculation is a bit expensive. \\
+MD\_SEED=        12345 \verb"   " !(for all) \\
+\verb"    "! random seed for initializing the velocities \\
+\verb"    "! when no velocities are specified in IN.ATOM file. \\
+\verb"    "! if MD\_SEED=-1, the random seed will be set using the system\_clock().\\
+\verb"    "! if this is not set, a default 12345 will be used. \\
+MD\_AVET\_TIMEINTERVAL=    100*DT \verb"   " !(for all) \\
+\verb"    "! time interval to calculate average temperature and pressure ($fs$). \\
+\verb"    "! This is not for the instantaneous temperatur and pressure, but the average values within the  MD\_AVET\_TIMEINTERVAL time.\\
+MD\_NPT\_ISOSCALEV=    0  \verb"   " !(for all) \\
+\verb"    "! 1--overall scaling of the box; default=0 \\
+NSTEP\_OUTPUT\_RHO= 100 \\
+\verb"    "! step interval to output the charge density \\
+MD\_MSST\_VS = 0.0 \\
+\verb"    "! velocity of shock wave (bohr/fs) \\
+MD\_MSST\_DIR = 0 \\
+\verb"    "! direction of shock wave (0--x, 1--y, 2--z)\\
+MD\_ZERO\_TOTMOMENT = F \\
+\verb"    "! if MD\_ZERO\_TOTMOMENT=T, make system's total momentum to zero; default = F\\
+\end{mdframed}
+\end{spacing}
+
+\subsection{IN.EXT\_FORCE file} \label{otherinput:in.extforce}
+If IN.EXT\_FORCE=T, a file IN.EXT\_FORCE will be provided, it has
+    the following format:
+
+    \begin{spacing}{1.2}
+        \begin{Verbatim}[frame=single,fontsize=\small,fontfamily=tt]
+
+     natom
+     iatom, fx, fy, fz    ! unit eV/Amstrong
+     .................
+     iatom, fx, fy, fz    ! There will be natom lines
+
+        \end{Verbatim}
+    \end{spacing}
+
+\subsection{IN.SOLVENT file} \label{otherinput:in.solvent}
+{IN.SOLVENT = T}, will use solvent model. Note, all the other
+    input in etot.input will be the same. In other words, solvent model can be used
+    to do single SCF, RELAX, MD and TDDFT calculations. However, one has to prepare a
+     ``IN.SOLVENT'' file in the running directory, which control the parameters
+     for the solvent model. When IN.SOLVENT=T, after the PWmat run, a OUT.SOLVENT file
+     will be generated which lists all the options used for the solvent model.
+     The ``IN.SOLVENT'' has the following contents:
+
+\begin{spacing}{1.2}
+    \begin{mdframed}[style=exampledefault]
+\textbf{SOLVENT\_TYPE} = predefined\_solvent\_type \\
+\verb"    "predefined\_solvent\_type can be: WATER, NONE.\\
+\verb"    "If SOLVENT\_TYPE=WATER, the program will use the default parameters for water, but the other explicit input parameters can overwrite the default parameters.\\
+\textbf{DIELECTRIC\_CONST} = epsilon0 \\
+\verb"    "epsilon0 is a real number: the dielectric constant of the solvent. \\
+\textbf{SURFACE\_TENSION} = E \\
+\verb"    "E is the surface tension ($dyn/cm$) of the cavity, \\
+\verb"    "used to calculate E*S term, S is the surface area of the cavity. \\
+\verb"    "positive/negative E (default is 50 for water) means it will have positive/negative surface energy.\\
+\verb"    "Can be used to represent the solute/solvent van der Walls interaction. \\
+\verb"    "Can be used as a fitting parameter.\\
+\textbf{PRESSURE} = P \\
+\verb"    "P is the pressure ($GPa$) of the cavity, \\
+\verb"    "used to calculate the P*V term, V is the volume of the cavity. \\
+\verb"    "Default is -0.35 for water. \\
+\verb"    "Can be used as a fitting parameter.\\
+\textbf{RHOMAX\_DIELECTRIC} = cut1 \\
+\verb"    "Default, 0.005 ($electron/Bohr^3$), \\
+\verb"    "used to control epsilon(rho\_e). \\
+\verb"    "When rho\_e $>$ RHOMAX\_DIELECTRIC, epsilon=1\\
+\textbf{RHOMIN\_DIELECTRIC} = cut2 \\
+\verb"    "Default, 0.0001, used to control epsilon(rho\_e).\\
+\verb"    "When rho\_e $<$ RHOMIN\_DIELECTRIC, epsilon=epsilon0 input above. \\
+\verb"    "Basically, the dielectric constant changes from 1 to epsilon0 when rho\_e changes from cut1 to cut2.\\
+\verb"    "The choice of rho\_e will be controlled by DIELECTRIC\_MODEL below.  \\
+\textbf{DIELECTRIC\_MODEL} = dielectric\_model\_type \\
+\verb"    "The parameter controls what to be used as the rho\_e (together with cut1 and cut2) to control the dielectric function profile.   \\
+\verb"    "The dielectric\_model\_type can be SCF\_CHARGE,  ATOM\_CHARGE, EXP\_CHARGE, AEXP\_CHARGE. \\
+\verb"    "SCF\_CHARGE: use the SCF calculated electron charge density (default) \\
+\verb"    "ATOM\_CHARGE: use the sum of neutral atomic charge density from upf file (each atom multiplied by a prefactor param1). We recommend this option for most calculations due to stability.\\
+\verb"    "EXP\_CHARGE: for each atom, use an exponential param2*exp(-r/param3) form.\\
+\verb"    "AEXP\_CHARGE: use the sum of neutral atomic charge and the exponential charge, equals: param1*rho\_atom(r)+param2*exp(-r/param3) \\
+\verb"    "Note, for stability, especially for JOB=RELAX, we suggest to use ATOM\_CHARGE, EXP\_CHARGE or AEXP\_CHARGE. There is not much benefit to use SCF charge density.  \\
+\verb"    "AEXP\_CHARGE is used to fill the possible hole at r=0 for ATOM\_CHARGE. If ATOM\_CHARGE is used, the program will output an atom.UPF.rhoatom file for each atom, which has: r, rho(r) (with unit Bohr, electron/$Bohr^3$). One can use these files to fit the param2, param3, then to use EXP\_CHARGE to replace ATOM\_CHARGE (if one wants to do that). Or to find the proper param2,param3 for AEXP\_CHARGE. One can also use that to find out whether the RHOMAX\_DIELECTRIC value will put some dielectric constant at r=0, i.e. whether RHOMAX\_DIELECTRIC is larger than rho\_atom(r) at r=0 (which is bad, then AEXP\_CHARGE or EXP\_CHARGE are better to be used).\\
+\textbf{PARAM\_CHARGE.1} = param1,param2,param3 \\
+\textbf{PARAM\_CHARGE.2} = param1,param2,param3 \\
+\verb"    "The number, 1,2,.. must be the same as the atom types the pseudopotential types. There must always be three numbers for each line, even if some are not used. These parameters are used to control the charge expression for ATOM\_CHARGE, EXP\_CHARGE, and AEXP\_CHARGE. param1 is a prefactor for ATOM\_CHARGE. For the EXP\_CHARGE, it is: $param2*exp(-r/param3)$. Here param2 unit is electron/$Bohr^3$, and param3 unit is Bohr.\\
+\textbf{RHOMAX\_CAVITY} = cut11 \\
+\verb"    "Default, 0.005 ($electron/Bohr^3$), used to control the cavity of the solute molecule.\\
+\textbf{RHOMIN\_CAVITY} = cut22 \\
+\verb"    "Default, 0.0001, used to control the cavity of the solute molecule. The cavity is created inside cut11 (when rho $>$ cut11). The thickness of the surface is controlled by cut11 to cut22 (the cavity disappears for rho $<$ cut22. Note, the cavity is always judged by the SCF calculated valence electron charge density. Also, the cavity for the cavity and pressure term can be different from the effective cavity of the dielectric function.\\
+\textbf{POISSON\_BOLTZMANN} = T/F \\
+\verb"    "Used to control whether to do linearized Poisson-Boltzmann equation. If true, we need the following parameter: RHOMAX\_DEBY, RHOMIN\_DEBY, AKK0\_DEBY. \\
+\textbf{DEBY\_AKK0} = $akk_0$ \\
+\verb"    "The inverse deby length square in the linearized Poisson-Boltmann equation. Unit: $1/Bhor^2$, default 0.\\
+\verb"    "Note, $akk_0=akk_b^2=e^2*\sum_i N_i Z_i^2/kT/epsilon0$.\\
+\verb"    "Here, $N_i$ is the concentration of the free ion i in the solvent, and $Z_i$ is the free ion charge, and $kT$ are the temperature energy. For example, at room temperature, in water with epsilon0=80, when ion concentration is 0.1$Mol$, $akk_0=0.036/Bohr^2$. Large $akk_0$, there will be strongly ionic screening. Small value corresponds to weaker (longer length) screening. Note, when $akk_0=0$, there will be no Poisson-Boltzmann equation. When $akk_0>0$, there will be Poisson\_Boltzmann equation: $\nabla [\epsilon(r)\nabla\phi(r)]-\epsilon_0*k^2(r)\phi(r)=-4\pi (rho_{solute}-rho_{ion})$ .\\
+\textbf{RHOMAX\_DEBY} = cut111  \\
+\verb"    "Default, 0.005 ($electron/Bohr^3$), used to control the turn on of $k^2(r)$ in the Poisson-Boltzmann equation. When rho\_e $>$ cut111, $k^2(r)=0$.\\
+\textbf{RHOMIN\_DEBY} = cut222  \\
+\verb"    "Default, 0.0001 ($electron/Bohr^3$). cut111 and cut222 are used to control the turn on of $k^2(r)$ in the Poisson-Boltzmann equation. When rho\_e $<$ cut222, $k^2(r)=akk_0$. If one likes to put the free ion screening effects further away from the surface or solute molecule, we can set RHOMAX\_DEBY, RHOMIN\_DEBY smaller than RHOMAX\_DIELECTRIC, RHOMIN\_DIELETRIC. Note, here rho\_e as described by DIELECTRIC\_MODEL is used. \\
+\textbf{POISSON\_MIX\_SCHEME} = LINEAR/PULAY (must be all capital) \\
+\verb"    "The default is LINEAR. This is used to control which scheme is used to solve the Poisson equation with a spatially variation dielectric function. We have used an iterative scheme, which generates a polarization charge, and mix the polarization charge with previous steps. LINEAR, PULAY mixing schemes can be used. But unless the iteration does not converge, one should use the simple LINEAR (default) mixing scheme. Usually this option is not needed.\\
+\textbf{POISSON\_MIX\_COEFF} = param  \\
+\verb"    "Default 0.5. The mixing parameter used in the above mixing schemes. Smaller the value, more stable, but slower. Usually this option is not needed.\\
+\textbf{POISSON\_ERROR} = error  \\
+\verb"    "Default 1.E-10. The tolerance and stopping error for the Poisson equation iteration. Usually this option is not needed.
+    \end{mdframed}
+\end{spacing}
+
+    For the water, here is the recommended settings (according to: J. Chen. phys. 136, 064102.): 
+\begin{spacing}{1.2}
+    \begin{mdframed}[style=exampledefault]
+    dielectric\_const=78\\
+    surface\_tension=50 \\ 
+    pressure=-0.35 \\
+    rhomax\_dielectric=0.005\\
+    rhomin\_dielectric=0.0001
+    \end{mdframed}
+\end{spacing}
+
+\subsection{IN.TDDFT\_TIME file} \label{otherinput:in.tddfttime}
+File IN.TDDFT\_TIME format,
+\begin{spacing}{1.2}
+\begin{Verbatim}[frame=single,fontsize=\small,fontfamily=tt]
+0 ftddft(0)
+1 ftddft(1)
+...
+N ftddft(N)
+\end{Verbatim}
+\end{spacing}
+
+
+\subsection{IN.TDDFTOPT file} \label{otherinput:in.tddftopt}
+In file IN.TDDFTOPT one can set:
+
+1. OUT.MDDIPOLE.RSPACE=T/F, default=T.
+
+   If T, write file MDDIPOLE.RSPACE each time step.
+
+2. OUT.MDDIPOLE.KSPACE=T/F, default=F.
+
+   If T, write file MDDIPOLE.KSPACE each time step.
+
+3. TDDFT\_SEED, default=12345.
+
+   Random seed for initializing the wavefunctions and velocities. If TDDFT\_SEED=-1, the random seed will be set using the system\_clock(). If this is not set, a default 12345 will be used.
+
+4. Besides the TDDFT\_SPACE and TDDFT\_TIME, One can use file IN.TDDFTOPT to input
+external potential by setting TD\_EFIELD or TD\_EFIELD\_LIST\_*. The details are as follows.
+
+(unit: energys--Hartree, coordinates---fractional in [0,1], time --- fs)
+
+\begin{spacing}{1.2}
+\begin{Verbatim}[frame=single,fontfamily=tt]
+TD_EFIELD=efield_type num_pars pars_list
+TD_EFIELD_LIST_1=efield_type num_pars pars_list
+TD_EFIELD_LIST_2=efield_type num_pars pars_list
+TD_EFIELD_LIST_3=efield_type num_pars pars_list
+...
+TD_EFIELD_LIST_20=efield_type num_pars pars_list
+
+---E(r,t)-------#---[efield_type num_pars pars_list]---------#
+ E(r)=(x-x0)*Ex     [nontd_linear_x 4 x0,y0,z0,Ex]
+ E(r)=(y-y0)*Ey     [nontd_linear_y 4 x0,y0,z0,Ey]
+ E(r)=(z-z0)*Ez     [nontd_linear_z 4 x0,y0,z0,Ez]
+ E(r)=Er*sqrt((x-x0)^2+(y-y0)^2+(z-z0)^2)^order,E(r)=Emax if E(r)>Emax
+                    [nontd_well_poly 6 x0,y0,z0,order,Er,Emax]
+-------------------------------------------------------------#
+ E(r,t)=(x-x0)*Ex*delta(t-t0)
+                    [td_kick_x 5 x0,y0,z0,Ex,t0]
+ E(r,t)=(y-y0)*Ey*delta(t-t0)
+                    [td_kick_y 5 x0,y0,z0,Ey,t0]
+ E(r,t)=(z-z0)*Ez*delta(t-t0)
+                    [td_kick_z 5 x0,y0,z0,Ez,t0]
+-------------------------------------------------------------#
+ E(r,t)=(x-x0)*Ex*exp(-(t-t0)**2/sigma**2)
+                    [td_gaussian_x 6 x0,y0,z0,Ex,sigma,t0]
+ E(r,t)=(y-y0)*Ey*exp(-(t-t0)**2/sigma**2)
+                    [td_gaussian_y 6 x0,y0,z0,Ey,sigma,t0]
+ E(r,t)=(z-z0)*Ez*exp(-(t-t0)**2/sigma**2)
+                    [td_gaussian_z 6 x0,y0,z0,Ez,sigma,t0]
+-------------------------------------------------------------#
+ E(r,t)=(x-x0)*Ex*exp(-(t-t0)**2/sigma**2)*sin(w*t+k*z+phi)
+                    [td_gaussian_sin_xz 9 x0,y0,z0,Ex,sigma,t0,w,k,phi]
+ E(r,t)=(y-y0)*Ey*exp(-(t-t0)**2/sigma**2)*sin(w*t+k*z+phi)
+                    [td_gaussian_sin_yz 9 x0,y0,z0,Ey,sigma,t0,w,k,phi]
+ E(r,t)=(x-x0)*Ex*exp(-(t-t0)**2/sigma**2)*sin(w*t+k*y+phi)
+                    [td_gaussian_sin_xy 9 x0,y0,z0,Ex,sigma,t0,w,k,phi]
+ E(r,t)=(z-z0)*Ez*exp(-(t-t0)**2/sigma**2)*sin(w*t+k*y+phi)
+                    [td_gaussian_sin_zy 9 x0,y0,z0,Ez,sigma,t0,w,k,phi]
+ E(r,t)=(y-y0)*Ey*exp(-(t-t0)**2/sigma**2)*sin(w*t+k*x+phi)
+                    [td_gaussian_sin_yx 9 x0,y0,z0,Ey,sigma,t0,w,k,phi]
+ E(r,t)=(z-z0)*Ez*exp(-(t-t0)**2/sigma**2)*sin(w*t+k*x+phi)
+                    [td_gaussian_sin_zx 9 x0,y0,z0,Ez,sigma,t0,w,k,phi]
+------------------------------------------------------------#
+ E(r,t)=(x-x0)*Ex*cos(w*t+k*z+phi)
+                    [td_cos_xz 7 x0,y0,z0,Ex,w,k,phi]
+ E(r,t)=(y-y0)*Ey*cos(w*t+k*z+phi)
+                    [td_cos_yz 7 x0,y0,z0,Ey,w,k,phi]
+ E(r,t)=(x-x0)*Ex*cos(w*t+k*y+phi)
+                    [td_cos_xy 7 x0,y0,z0,Ex,w,k,phi]
+ E(r,t)=(z-z0)*Ez*cos(w*t+k*y+phi)
+                    [td_cos_zy 7 x0,y0,z0,Ez,w,k,phi]
+ E(r,t)=(y-y0)*Ey*cos(w*t+k*x+phi)
+                    [td_cos_yx 7 x0,y0,z0,Ey,w,k,phi]
+ E(r,t)=(z-z0)*Ez*cos(w*t+k*x+phi)
+                    [td_cos_zx 7 x0,y0,z0,Ez,w,k,phi]
+\end{Verbatim}
+\end{spacing}
+
+\subsection{IN.WANNIER\_*} \label{otherinput:in.wannier}
+     When XCFUNCTIONAL = LDAWKM / LDAWKM2 and JOB = SCF, one should prepare input file `IN.WANNIER\_PARAM' and input wannier functions `IN.WANNIER\_*.u/d'.
+     
+     \paragraph{IN.WANNIER\_PARAM}
+    The parameters $\lambda_k$ are input from the file `IN.WANNIER\_PARAM' 
+    It has a form like:
+    \begin{spacing}{1.2}
+        \begin{Verbatim}[frame=single,fontsize=\small,fontfamily=tt]
+144 72 72      : n1w,n2w,n3w
+5   1          : num_wannier_site, num_site(to repeat the Wannier)
+-----------------------------------
+1   -0.5       : lambda eV, up
+2    0.0       : lambda eV, up
+3    0.0       : lambda eV, up
+4    0.0       : lambda eV, up
+5    0.0       : lambda eV, up
+-----------------------------------
+1    0.0       : lambda eV, dn
+2    0.0       : lambda eV, dn
+3    0.0       : lambda eV, dn
+4    0.0       : lambda eV, dn
+5    0.0       : lambda eV, dn
+-----------------------------------
+1   0, 0, 0    : isite,ish1,ish2,ish3
+-----------------------------------
+     \end{Verbatim}
+    \end{spacing}
+
+   Note, if there are num\_site > 1, then there should be so many lines in the last
+   section (isite,ish1,ish2,ish3), which spell out each site, how much shift. This feature is used to avoid to input too many Wannier functions if they are the same (just by a shift).
+
+\paragraph{IN.WANNIER\_*.u/d}
+      The Wannier functions are input from files: IN.WANNIER\_0001.u, IN.WANNIER\_0002.u,
+   IN.WANNIER\_0001.d, IN.WANNIER\_0001.d etc (each file has one Wannier function, with the
+   same format as charge density files) just like for the JOB=WKM calculations.
