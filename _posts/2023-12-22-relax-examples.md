@@ -311,5 +311,5 @@ insert a picture:
 
 |SPIN UP-DN| T*S| Total Energy|
 |:---:|:---:|:---:|
-|![mag](/assets/images/mag.png)|![ts](/assets/images/ts.png)|![etot](/assets/images/etot.png)|
+|![mag](/assets/jekyll-gitbook/mag.png)|![ts](/assets/jekyll-gitbook/ts.png)|![etot](/assets/jekyll-gitbook/etot.png)|
 
